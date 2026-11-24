@@ -214,7 +214,6 @@
 </div>
 
 <script>
-  <script>
   const GAS_URL = "https://script.google.com/macros/s/AKfycbz77azM_SSDOHF0viET02uS_Xrll-6Gsc8ms5kVWnL-EJfbAL3C21pKulkqp6kJYbGjsg/exec";
   let allData = [];
   let isAdmin = false;
@@ -224,44 +223,44 @@
   });
 
   function loadDataFromSheet() {
-  const tbody = document.getElementById('tableBody');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;">Memuat data dari Google Sheets...</td></tr>';
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;">Memuat data dari Google Sheets...</td></tr>';
 
-  const callbackName = 'handleSheetData_' + Date.now();
-  const scriptEl = document.createElement('script');
+    const callbackName = 'handleSheetData_' + Date.now();
+    const scriptEl = document.createElement('script');
 
-  const timeoutId = setTimeout(() => {
-    cleanup();
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Timeout memuat data dari Google Sheets. Coba klik Refresh Data.</td></tr>';
-  }, 15000);
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Timeout memuat data dari Google Sheets. Coba klik Refresh Data.</td></tr>';
+    }, 15000);
 
-  function cleanup() {
-    clearTimeout(timeoutId);
-    delete window[callbackName];
-    if (scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
-  }
-
-  window[callbackName] = function(result) {
-    cleanup();
-    if (result && result.status === 'success') {
-      allData = result.data || [];
-      populateSPVFilter();
-      refreshUI();
-    } else {
-      alert('Gagal memuat data: ' + (result && result.message ? result.message : 'Respons tidak valid'));
+    function cleanup() {
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      if (scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
     }
-  };
 
-  scriptEl.onerror = function() {
-    cleanup();
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Gagal memuat skrip dari Google Apps Script.</td></tr>';
-  };
+    window[callbackName] = function(result) {
+      cleanup();
+      if (result && result.status === 'success') {
+        allData = result.data || [];
+        populateSPVFilter();
+        refreshUI();
+      } else {
+        alert('Gagal memuat data: ' + (result && result.message ? result.message : 'Respons tidak valid'));
+      }
+    };
 
-  const sep = GAS_URL.indexOf('?') !== -1 ? '&' : '?';
-  scriptEl.src = GAS_URL + sep + 'callback=' + callbackName;
-  document.body.appendChild(scriptEl);
-}
+    scriptEl.onerror = function() {
+      cleanup();
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Gagal memuat skrip dari Google Apps Script.</td></tr>';
+    };
+
+    const sep = GAS_URL.indexOf('?') !== -1 ? '&' : '?';
+    scriptEl.src = GAS_URL + sep + 'callback=' + callbackName;
+    document.body.appendChild(scriptEl);
+  }
 
   async function sendToSheet(payload) {
     try {
@@ -343,10 +342,7 @@
           <td><div><strong>${row.Tanggal}</strong></div><div class="text-muted">${row.Jam}</div></td>
           <td><div>Trx: <strong>${row.TrxNum}</strong></div><div class="text-muted">Reg: ${row.RegNum} | Kassa: ${row.CounterID}</div></td>
           <td><div>${row.SKU}</div><div class="text-muted">Qty: ${row.Qty}</div></td>
-          <td><div><strong>${formatRupiah(row.Amount)}</strong></div>${row.Disc > 0 ? `<div class="text-danger" style="font-size:0.78rem;">Disc: ${formatRupiah(row.Disc)}</div>` : ''}</td>
-          <td><span class="badge badge-cash">${row.CashNum}</span></td>
-          <td><div><strong>${row.AuthName}</strong></div><div class="text-muted">ID: ${row.AuthID}</div></td>
-          <td style="max-width:240px;">${row.Keterangan_Kasir ? `<span>${row.Keterangan_Kasir}</span>` : `<span class="text-danger" style="font-style:italic;font-size:0.8rem;">Belum ada keterangan</span>`}</td>
+          <td><div><strong>${formatRupiah(row.Amount)}</strong></div>${row.Disc > 0 ? `<div class="text-danger" style="font-size:0.78rem;">Disc: ${formatRupiah(row.Disc)}</div>` : ''}</td> <td><span class="badge badge-cash">${row.CashNum}</span></td> <td><div><strong>${row.AuthName}</strong></div><div class="text-muted">ID: ${row.AuthID}</div></td> <td style="max-width:240px;">${row.Keterangan_Kasir ? `<span>${row.Keterangan_Kasir}</span>` : `<span class="text-danger" style="font-style:italic;font-size:0.8rem;">Belum ada keterangan</span>`}</td>
           <td>${isParaf ? `<span class="badge badge-paraf-ok">Sudah Diparaf</span><div class="text-muted" style="margin-top:4px;">${row.Paraf_SPV}</div>` : `<span class="badge badge-paraf-wait">Menunggu Paraf</span>`}</td>
           <td>
             <div class="actions">
@@ -381,78 +377,4 @@
     const teksFinal = nama ? `[${nama}] ${ket}` : ket;
     const btn = e.target;
     btn.disabled = true;
-    btn.innerText = 'Menyimpan...';
-
-    const res = await sendToSheet({ action: 'update_ket', id: id, Keterangan_Kasir: teksFinal });
-    btn.disabled = false;
-    btn.innerText = 'Simpan Keterangan';
-
-    if (res.status === 'success') {
-      const item = allData.find(d => String(d.id) === String(id));
-      item.Keterangan_Kasir = teksFinal;
-      tutupModal('modalKet');
-      refreshUI();
-    }
-  }
-
-  function bukaModalParaf(id) {
-    const item = allData.find(d => String(d.id) === String(id));
-    document.getElementById('parafId').value = id;
-    document.getElementById('previewKeterangan').innerText = item.Keterangan_Kasir;
-    document.getElementById('inputSpvName').value = item.AuthName;
-    document.getElementById('modalParaf').classList.remove('d-none');
-  }
-
-  async function prosesParaf(e) {
-    const id = document.getElementById('parafId').value;
-    const spv = document.getElementById('inputSpvName').value.trim();
-    const now = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
-    const parafTeks = `Diparaf oleh ${spv} (${now})`;
-
-    const btn = e.target;
-    btn.disabled = true;
-    btn.innerText = 'Memproses...';
-
-    const res = await sendToSheet({ action: 'paraf', id: id, Paraf_SPV: parafTeks });
-    btn.disabled = false;
-    btn.innerText = 'Konfirmasi & Paraf';
-
-    if (res.status === 'success') {
-      const item = allData.find(d => String(d.id) === String(id));
-      item.Status_Paraf = 'Sudah Diparaf';
-      item.Paraf_SPV = parafTeks;
-      tutupModal('modalParaf');
-      refreshUI();
-    }
-  }
-
-  function toggleAdmin() {
-    if (isAdmin) {
-      isAdmin = false;
-      document.getElementById('adminBadge').classList.add('d-none');
-      document.getElementById('btnAdminLogin').innerText = 'Login Admin';
-      renderTable();
-      return;
-    }
-    const pin = prompt('Masukkan PIN Admin:');
-    if (pin === '123456') {
-      isAdmin = true;
-      document.getElementById('adminBadge').classList.remove('d-none');
-      document.getElementById('btnAdminLogin').innerText = 'Keluar Admin';
-      renderTable();
-    } else if (pin !== null) {
-      alert('PIN salah!');
-    }
-  }
-
-  async function hapusBaris(id) {
-    if (!confirm('Hapus baris ini secara permanen dari Google Sheets?')) return;
-    const res = await sendToSheet({ action: 'delete', id: id });
-    if (res.status === 'success') {
-      allData = allData.filter(d => String(d.id) !== String(id));
-      refreshUI();
-    }
-  }
-</script>
-</body>
-</html>
+    btn
