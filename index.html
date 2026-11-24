@@ -1,0 +1,224 @@
+<script>
+  // TEMPEL URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI:
+  const GAS_URL = "https://script.google.com/macros/s/GANTI_DENGAN_URL_ANDA/exec";
+
+  let allData = [];
+  let isAdmin = false;
+
+  window.onload = () => {
+    loadDataFromSheet();
+  };
+
+  // Mengambil data terbaru dari Google Sheets
+  async function loadDataFromSheet() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;">Memuat data dari Google Sheets...</td></tr>';
+
+    try {
+      const response = await fetch(GAS_URL);
+      const result = await response.json();
+      if (result.status === 'success') {
+        allData = result.data;
+        populateSPVFilter();
+        refreshUI();
+      } else {
+        alert('Gagal memuat data: ' + result.message);
+      }
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Gagal terhubung ke Google Sheets. Periksa URL Apps Script.</td></tr>';
+    }
+  }
+
+  // Mengirim perubahan (Update Keterangan / Paraf / Hapus) ke Google Sheets
+  async function sendToSheet(payload) {
+    try {
+      const response = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain mencegah preflight CORS error di GAS
+        body: JSON.stringify(payload)
+      });
+      return await response.json();
+    } catch (err) {
+      alert('Terjadi kesalahan jaringan saat menyimpan ke Google Sheets.');
+      throw err;
+    }
+  }
+
+  function refreshUI() {
+    updateStats();
+    renderTable();
+  }
+
+  function populateSPVFilter() {
+    const spvSet = new Set(allData.map(d => d.AuthName).filter(Boolean));
+    const select = document.getElementById('filterSPV');
+    select.innerHTML = '<option value="">Semua SPV</option>';
+    spvSet.forEach(spv => {
+      select.innerHTML += `<option value="${spv}">${spv}</option>`;
+    });
+  }
+
+  function updateStats() {
+    document.getElementById('statTotal').innerText = allData.length;
+    document.getElementById('statBelumIsi').innerText = allData.filter(d => !d.Keterangan_Kasir).length;
+    document.getElementById('statBelumParaf').innerText = allData.filter(d => d.Keterangan_Kasir && d.Status_Paraf !== 'Sudah Diparaf').length;
+    document.getElementById('statSelesai').innerText = allData.filter(d => d.Status_Paraf === 'Sudah Diparaf').length;
+  }
+
+  function getBadgeClass(kat) {
+    const k = (kat || '').toLowerCase();
+    if (k.includes('void')) return 'badge-void';
+    if (k.includes('return')) return 'badge-return';
+    if (k.includes('discount')) return 'badge-discount';
+    if (k.includes('correct')) return 'badge-correct';
+    if (k.includes('duplicate')) return 'badge-duplicate';
+    return 'badge-unmatch';
+  }
+
+  function formatRupiah(angka) {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
+  }
+
+  function renderTable() {
+    const fKat = document.getElementById('filterKategori').value.toLowerCase();
+    const fStat = document.getElementById('filterStatus').value;
+    const fSpv = document.getElementById('filterSPV').value;
+    const search = document.getElementById('searchInput').value.toLowerCase();
+
+    const filtered = allData.filter(row => {
+      const matchKat = !fKat || (row.Kategori || '').toLowerCase().includes(fKat);
+      const matchStat = !fStat || row.Status_Paraf === fStat;
+      const matchSpv = !fSpv || row.AuthName === fSpv;
+      const matchSearch = !search || 
+        String(row.SKU).toLowerCase().includes(search) ||
+        String(row.TrxNum).toLowerCase().includes(search) ||
+        String(row.CashNum).toLowerCase().includes(search) ||
+        String(row.Keterangan_Kasir).toLowerCase().includes(search);
+      return matchKat && matchStat && matchSpv && matchSearch;
+    });
+
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    filtered.forEach(row => {
+      const isParaf = row.Status_Paraf === 'Sudah Diparaf';
+      const delBtn = isAdmin ? `<button class="btn btn-danger" onclick="hapusBaris('${row.id}')">Hapus</button>` : '';
+
+      tbody.innerHTML += `
+        <tr>
+          <td><span class="badge ${getBadgeClass(row.Kategori)}">${row.Kategori}</span></td>
+          <td><div><strong>${row.Tanggal}</strong></div><div class="text-muted">${row.Jam}</div></td>
+          <td><div>Trx: <strong>${row.TrxNum}</strong></div><div class="text-muted">Reg: ${row.RegNum} | Kassa: ${row.CounterID}</div></td>
+          <td><div>${row.SKU}</div><div class="text-muted">Qty: ${row.Qty}</div></td>
+          <td><div><strong>${formatRupiah(row.Amount)}</strong></div>${row.Disc > 0 ? `<div class="text-danger" style="font-size:0.78rem;">Disc: ${formatRupiah(row.Disc)}</div>` : ''}</td>
+          <td><span class="badge badge-cash">${row.CashNum}</span></td>
+          <td><div><strong>${row.AuthName}</strong></div><div class="text-muted">ID: ${row.AuthID}</div></td>
+          <td style="max-width:240px;">${row.Keterangan_Kasir ? `<span>${row.Keterangan_Kasir}</span>` : `<span class="text-danger" style="font-style:italic;font-size:0.8rem;">Belum ada keterangan</span>`}</td>
+          <td>${isParaf ? `<span class="badge badge-paraf-ok">Sudah Diparaf</span><div class="text-muted" style="margin-top:4px;">${row.Paraf_SPV}</div>` : `<span class="badge badge-paraf-wait">Menunggu Paraf</span>`}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-primary" onclick="bukaModalKet('${row.id}')">+ Ket</button>
+              <button class="btn btn-success" onclick="bukaModalParaf('${row.id}')" ${!row.Keterangan_Kasir ? 'disabled title="Isi keterangan dulu"' : ''}>Paraf</button>
+              ${delBtn}
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+  }
+
+  function tutupModal(id) {
+    document.getElementById(id).classList.add('d-none');
+  }
+
+  function bukaModalKet(id) {
+    const item = allData.find(d => String(d.id) === String(id));
+    document.getElementById('editId').value = id;
+    document.getElementById('inputNamaKasir').value = '';
+    document.getElementById('inputKeterangan').value = item.Keterangan_Kasir || '';
+    document.getElementById('modalKet').classList.remove('d-none');
+  }
+
+  async function simpanKeterangan() {
+    const id = document.getElementById('editId').value;
+    const nama = document.getElementById('inputNamaKasir').value.trim();
+    const ket = document.getElementById('inputKeterangan').value.trim();
+    if (!ket) return alert('Keterangan wajib diisi!');
+
+    const teksFinal = nama ? `[${nama}] ${ket}` : ket;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = 'Menyimpan...';
+
+    const res = await sendToSheet({ action: 'update_ket', id: id, Keterangan_Kasir: teksFinal });
+    btn.disabled = false;
+    btn.innerText = 'Simpan Keterangan';
+
+    if (res.status === 'success') {
+      const item = allData.find(d => String(d.id) === String(id));
+      item.Keterangan_Kasir = teksFinal;
+      tutupModal('modalKet');
+      refreshUI();
+    }
+  }
+
+  function bukaModalParaf(id) {
+    const item = allData.find(d => String(d.id) === String(id));
+    document.getElementById('parafId').value = id;
+    document.getElementById('previewKeterangan').innerText = item.Keterangan_Kasir;
+    document.getElementById('inputSpvName').value = item.AuthName;
+    document.getElementById('modalParaf').classList.remove('d-none');
+  }
+
+  async function prosesParaf() {
+    const id = document.getElementById('parafId').value;
+    const spv = document.getElementById('inputSpvName').value.trim();
+    const now = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+    const parafTeks = `Diparaf oleh ${spv} (${now})`;
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = 'Memproses...';
+
+    const res = await sendToSheet({ action: 'paraf', id: id, Paraf_SPV: parafTeks });
+    btn.disabled = false;
+    btn.innerText = 'Konfirmasi & Paraf';
+
+    if (res.status === 'success') {
+      const item = allData.find(d => String(d.id) === String(id));
+      item.Status_Paraf = 'Sudah Diparaf';
+      item.Paraf_SPV = parafTeks;
+      tutupModal('modalParaf');
+      refreshUI();
+    }
+  }
+
+  function toggleAdmin() {
+    if (isAdmin) {
+      isAdmin = false;
+      document.getElementById('adminBadge').classList.add('d-none');
+      document.getElementById('btnAdminLogin').innerText = 'Login Admin (PIN: 123456)';
+      renderTable();
+      return;
+    }
+    const pin = prompt('Masukkan PIN Admin:');
+    if (pin === '123456') {
+      isAdmin = true;
+      document.getElementById('adminBadge').classList.remove('d-none');
+      document.getElementById('btnAdminLogin').innerText = 'Keluar Admin';
+      renderTable();
+    } else if (pin !== null) {
+      alert('PIN salah!');
+    }
+  }
+
+  async function hapusBaris(id) {
+    if (!confirm('Hapus baris ini secara permanen dari Google Sheets?')) return;
+    const res = await sendToSheet({ action: 'delete', id: id });
+    if (res.status === 'success') {
+      allData = allData.filter(d => String(d.id) !== String(id));
+      refreshUI();
+    }
+  }
+</script>
