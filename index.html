@@ -257,8 +257,8 @@
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Gagal memuat skrip dari Google Apps Script.</td></tr>';
   };
 
-  const sep = GAS_URL.includes('?') ? '&' : '?';
-  scriptEl.src = `${GAS_URL}${sep}callback=${callbackName}`;
+  const sep = GAS_URL.indexOf('?') !== -1 ? '&' : '?';
+  scriptEl.src = GAS_URL + sep + 'callback=' + callbackName;
   document.body.appendChild(scriptEl);
 }
 
