@@ -214,7 +214,7 @@
 </div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbz77azM_SSDOHF0viET02uS_Xrll-6Gsc8ms5kVWnL-EJfbAL3C21pKulkqp6kJYbGjsg/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbz77azM_SSDOHF0viET02uS_Xrll-6Gsc8ms5kVWnL-EJfbAL3C21pKulkqp6kJYbGjsg/exec;
   let allData = [];
   let isAdmin = false;
 
@@ -222,26 +222,45 @@
     loadDataFromSheet();
   });
 
-  async function loadDataFromSheet() {
-    const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;">Memuat data dari Google Sheets...</td></tr>';
+  function loadDataFromSheet() {
+  const tbody = document.getElementById('tableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;">Memuat data dari Google Sheets...</td></tr>';
 
-    try {
-      const response = await fetch(GAS_URL);
-      const result = await response.json();
-      if (result.status === 'success') {
-        allData = result.data;
-        populateSPVFilter();
-        refreshUI();
-      } else {
-        alert('Gagal memuat data: ' + result.message);
-      }
-    } catch (err) {
-      console.error(err);
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Gagal terhubung ke Google Sheets. Periksa URL Apps Script.</td></tr>';
-    }
+  const callbackName = 'handleSheetData_' + Date.now();
+  const scriptEl = document.createElement('script');
+
+  const timeoutId = setTimeout(() => {
+    cleanup();
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Timeout memuat data dari Google Sheets. Coba klik Refresh Data.</td></tr>';
+  }, 15000);
+
+  function cleanup() {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    if (scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
   }
+
+  window[callbackName] = function(result) {
+    cleanup();
+    if (result && result.status === 'success') {
+      allData = result.data || [];
+      populateSPVFilter();
+      refreshUI();
+    } else {
+      alert('Gagal memuat data: ' + (result && result.message ? result.message : 'Respons tidak valid'));
+    }
+  };
+
+  scriptEl.onerror = function() {
+    cleanup();
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Gagal memuat skrip dari Google Apps Script.</td></tr>';
+  };
+
+  const sep = GAS_URL.includes('?') ? '&' : '?';
+  scriptEl.src = `${GAS_URL}${sep}callback=${callbackName}`;
+  document.body.appendChild(scriptEl);
+}
 
   async function sendToSheet(payload) {
     try {
