@@ -1,17 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitoring Aktivitas Kasir - Lippo PLZ MAL Jambi</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 0; background-color: #f4f6f9; color: #1e293b; font-size: 14px; }
+    .navbar { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .navbar-brand { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .badge-demo { background: #38bdf8; color: #0f172a; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; font-weight: 700; }
+    .badge-admin { background: #facc15; color: #0f172a; font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; font-weight: 700; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .alert-info { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .stat-card { background: #fff; padding: 16px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid #2563eb; }
+    .stat-card.danger { border-left-color: #dc2626; }
+    .stat-card.warning { border-left-color: #d97706; }
+    .stat-card.success { border-left-color: #059669; }
+    .stat-label { color: #64748b; font-size: 0.8rem; margin-bottom: 4px; }
+    .stat-val { font-size: 1.6rem; font-weight: 700; }
+    .text-danger { color: #dc2626; }
+    .text-warning { color: #d97706; }
+    .text-success { color: #059669; }
+    .text-muted { color: #64748b; font-size: 0.8rem; }
+    .card { background: #fff; padding: 16px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #334155; }
+    select, input, textarea { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: #2563eb; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1050px; }
+    th { background: #f8fafc; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #475569; font-size: 0.8rem; white-space: nowrap; }
+    td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+    tr:hover { background: #f8fafc; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; color: #fff; }
+    .badge-unmatch { background: #6b7280; }
+    .badge-correct { background: #0284c7; }
+    .badge-void { background: #dc2626; }
+    .badge-return { background: #d97706; }
+    .badge-duplicate { background: #7c3aed; }
+    .badge-discount { background: #059669; }
+    .badge-paraf-ok { background: #16a34a; }
+    .badge-paraf-wait { background: #fef08a; color: #854d0e; }
+    .badge-cash { background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; }
+    .btn { padding: 6px 12px; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #15803d; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-outline { background: transparent; border: 1px solid #fff; color: #fff; }
+    .btn-outline-blue { background: #fff; border: 1px solid #2563eb; color: #2563eb; }
+    .btn-secondary { background: #64748b; color: #fff; }
+    .actions { display: flex; gap: 6px; white-space: nowrap; }
+    .d-none { display: none !important; }
+    .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.55); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
+    .modal-box { background: #fff; border-radius: 10px; width: 100%; max-width: 460px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal-header { padding: 14px 18px; color: #fff; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 18px; }
+    .modal-footer { padding: 12px 18px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 8px; }
+    .form-group { margin-bottom: 14px; }
+    .preview-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; font-weight: 600; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <span>Log Aktivitas Kasir - Lippo PLZ MAL Jambi</span>
+    <span class="badge-demo">LIVE SHEET</span>
+  </div>
+  <div style="display:flex; gap:10px; align-items:center;">
+    <span id="adminBadge" class="badge-admin d-none">Admin Aktif (Tombol Hapus Muncul)</span>
+    <button id="btnAdminLogin" class="btn btn-outline" onclick="toggleAdmin()">Login Admin</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="alert-info">
+    <div>
+      <strong>Panduan:</strong> Klik <b>+ Ket</b> untuk isi alasan kasir &rarr; Klik <b>Paraf</b> untuk otorisasi SPV &rarr; Klik <b>Login Admin</b> untuk memunculkan tombol <b>Hapus</b>.
+    </div>
+    <button class="btn btn-outline-blue" onclick="loadDataFromSheet()">Refresh Data</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Aktivitas</div>
+      <div class="stat-val" id="statTotal">0</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">Belum Diisi Kasir</div>
+      <div class="stat-val text-danger" id="statBelumIsi">0</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Menunggu Paraf SPV</div>
+      <div class="stat-val text-warning" id="statBelumParaf">0</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Selesai (Sudah Diparaf)</div>
+      <div class="stat-val text-success" id="statSelesai">0</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="filter-grid">
+      <div>
+        <label>Kategori Aktivitas</label>
+        <select id="filterKategori" onchange="renderTable()">
+          <option value="">Semua Kategori (6 Laporan)</option>
+          <option value="Unmatch">Report Unmatch</option>
+          <option value="Item Correct">Item Correct</option>
+          <option value="Void">Void / Bill Cancellation</option>
+          <option value="Return">Return</option>
+          <option value="Print Duplicate">Print Duplicate</option>
+          <option value="Discount Manual">Discount Manual</option>
+        </select>
+      </div>
+      <div>
+        <label>Status Paraf</label>
+        <select id="filterStatus" onchange="renderTable()">
+          <option value="">Semua Status</option>
+          <option value="Belum Diparaf">Belum Diparaf</option>
+          <option value="Sudah Diparaf">Sudah Diparaf</option>
+        </select>
+      </div>
+      <div>
+        <label>Filter SPV Otorisasi</label>
+        <select id="filterSPV" onchange="renderTable()">
+          <option value="">Semua SPV</option>
+        </select>
+      </div>
+      <div>
+        <label>Cari (SKU / TrxNum / ID Kasir / Keterangan)</label>
+        <input type="text" id="searchInput" placeholder="Contoh: 221521, 398000, YUSRIAH..." onkeyup="renderTable()">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Kategori</th>
+            <th>Waktu</th>
+            <th>Trx / Reg / Kassa</th>
+            <th>SKU & Qty</th>
+            <th>Nominal</th>
+            <th>Kasir ID</th>
+            <th>SPV Otorisasi</th>
+            <th>Keterangan Kasir</th>
+            <th>Status & Paraf SPV</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Keterangan Kasir -->
+<div id="modalKet" class="modal-backdrop d-none">
+  <div class="modal-box">
+    <div class="modal-header" style="background:#2563eb;">
+      <span>Input / Update Keterangan Kasir</span>
+      <button style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;" onclick="tutupModal('modalKet')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>Nama Kasir yang Bertugas</label>
+        <input type="text" id="inputNamaKasir" placeholder="Contoh: M. Deni Akbar / Gusmarina">
+      </div>
+      <div class="form-group">
+        <label>Alasan / Keterangan Kejadian</label>
+        <textarea id="inputKeterangan" rows="3" placeholder="Jelaskan kronologi kejadian..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="tutupModal('modalKet')">Batal</button>
+      <button class="btn btn-primary" onclick="simpanKeterangan(event)">Simpan Keterangan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Paraf SPV -->
+<div id="modalParaf" class="modal-backdrop d-none">
+  <div class="modal-box">
+    <div class="modal-header" style="background:#16a34a;">
+      <span>Otorisasi Paraf SPV</span>
+      <button style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;" onclick="tutupModal('modalParaf')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="parafId">
+      <label>Keterangan yang diinput kasir:</label>
+      <div class="preview-box" id="previewKeterangan"></div>
+      <div class="form-group">
+        <label>Nama SPV yang Memaraf</label>
+        <input type="text" id="inputSpvName">
+        <div class="text-muted" style="margin-top:4px;">Otomatis terisi sesuai SPV otorisasi pada transaksi ini.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="tutupModal('modalParaf')">Batal</button>
+      <button class="btn btn-success" onclick="prosesParaf(event)">Konfirmasi & Paraf</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  // TEMPEL URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI:
   const GAS_URL = "https://script.google.com/macros/s/AKfycbz77azM_SSDOHF0viET02uS_Xrll-6Gsc8ms5kVWnL-EJfbAL3C21pKulkqp6kJYbGjsg/exec";
 
   let allData = [];
   let isAdmin = false;
 
-  window.onload = () => {
+  document.addEventListener('DOMContentLoaded', () => {
     loadDataFromSheet();
-  };
+  });
 
-  // Mengambil data terbaru dari Google Sheets
   async function loadDataFromSheet() {
     const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;">Memuat data dari Google Sheets...</td></tr>';
 
     try {
@@ -30,12 +244,11 @@
     }
   }
 
-  // Mengirim perubahan (Update Keterangan / Paraf / Hapus) ke Google Sheets
   async function sendToSheet(payload) {
     try {
       const response = await fetch(GAS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain mencegah preflight CORS error di GAS
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
       return await response.json();
@@ -140,14 +353,14 @@
     document.getElementById('modalKet').classList.remove('d-none');
   }
 
-  async function simpanKeterangan() {
+  async function simpanKeterangan(e) {
     const id = document.getElementById('editId').value;
     const nama = document.getElementById('inputNamaKasir').value.trim();
     const ket = document.getElementById('inputKeterangan').value.trim();
     if (!ket) return alert('Keterangan wajib diisi!');
 
     const teksFinal = nama ? `[${nama}] ${ket}` : ket;
-    const btn = event.target;
+    const btn = e.target;
     btn.disabled = true;
     btn.innerText = 'Menyimpan...';
 
@@ -171,13 +384,13 @@
     document.getElementById('modalParaf').classList.remove('d-none');
   }
 
-  async function prosesParaf() {
+  async function prosesParaf(e) {
     const id = document.getElementById('parafId').value;
     const spv = document.getElementById('inputSpvName').value.trim();
     const now = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
     const parafTeks = `Diparaf oleh ${spv} (${now})`;
 
-    const btn = event.target;
+    const btn = e.target;
     btn.disabled = true;
     btn.innerText = 'Memproses...';
 
@@ -198,7 +411,7 @@
     if (isAdmin) {
       isAdmin = false;
       document.getElementById('adminBadge').classList.add('d-none');
-      document.getElementById('btnAdminLogin').innerText = 'Login Admin (PIN: 123456)';
+      document.getElementById('btnAdminLogin').innerText = 'Login Admin';
       renderTable();
       return;
     }
@@ -222,3 +435,5 @@
     }
   }
 </script>
+</body>
+</html>
