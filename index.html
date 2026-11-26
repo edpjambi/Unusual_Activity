@@ -1092,12 +1092,18 @@
 
             // Khusus Parked Invoice, perhatikan nominal pada kolom F maupun nama kolom nominal/harga/amount
             const colFNominal = sheetName === "Parked Invoice"
-                ? getNominalByPositionOrName(raw, ["ColumnF", "ColF", "F", "Nominal", "Amount", "AMOUNT", "Price", "PRICE", "Total", "SubTotal", "Subtotal", "Gross", "NetAmount"], 5)
+                ? getNominalByPositionOrName(raw, [
+                    "ColumnF", "ColF", "F", "ParkedAmount", "Parked_Amount", "ParkedValue",
+                    "Nominal", "Amount", "AMOUNT", "Price", "PRICE", "Total", "SubTotal", "Subtotal", "Gross", "NetAmount", "Value"
+                ], 5)
                 : 0;
 
-            const priceVal = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price", "UnitPrice", "Harga", "HargaSatuan", "NormalPrice"])) || (sheetName === "Parked Invoice" ? colFNominal : 0);
+            const priceVal = parseCurrencyNumber(getFieldCI(raw, [
+                "PRICE", "Price", "UnitPrice", "Harga", "HargaSatuan", "NormalPrice", "ParkedPrice"
+            ])) || (sheetName === "Parked Invoice" ? colFNominal : 0);
             const amountVal = parseCurrencyNumber(getFieldCI(raw, [
-                "Amount", "AMOUNT", "GrossAmount", "Total", "SubTotal", "Subtotal", "Gross", "Nominal"
+                "Amount", "AMOUNT", "ParkedAmount", "Parked_Amount", "ParkedValue",
+                "GrossAmount", "Total", "SubTotal", "Subtotal", "Gross", "Nominal", "Value"
             ])) || colFNominal;
             const discVal = Math.abs(parseCurrencyNumber(getFieldCI(raw, [
                 "Disc", "DISC", "Discount", "Diskon", "DiscAmount", "Disc_Amount",
