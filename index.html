@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audit Kasir MDS 312 • Lippo Plaza Jambi</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23e11d48'/%3E%3Ctext x='50%25' y='56%25' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='800' font-size='26'%3E312%3C/text%3E%3C/svg%3E">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS (XLSX) CDN untuk Import & Export Excel -->
@@ -836,7 +837,63 @@
         // =====================================================
         // 3. KOMUNIKASI BACKEND GOOGLE APPS SCRIPT (FETCH POST)
         // =====================================================
-        async function callGasApi(payload, timeoutMs = 15000) {
+        function callGasJsonp(url, payload, timeoutMs = 25000) {
+            return new Promise((resolve) => {
+                const cbName = "__mds312_gas_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+                let settled = false;
+                let scriptEl = null;
+
+                const cleanup = () => {
+                    try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+                    if (scriptEl && scriptEl.parentNode) {
+                        scriptEl.parentNode.removeChild(scriptEl);
+                    }
+                };
+
+                const timer = setTimeout(() => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    resolve({ ok: false, error: "Koneksi timeout (server lambat merespons)" });
+                }, timeoutMs);
+
+                window[cbName] = (json) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timer);
+                    cleanup();
+                    if (json && json.ok === false) {
+                        resolve({ ok: false, error: json.error || "Apps Script mengembalikan error." });
+                    } else {
+                        resolve({ ok: true, data: json });
+                    }
+                };
+
+                try {
+                    const sep = url.includes("?") ? "&" : "?";
+                    const qPayload = encodeURIComponent(JSON.stringify(payload || {}));
+                    const actionParam = encodeURIComponent((payload && payload.action) || "ping");
+                    scriptEl = document.createElement("script");
+                    scriptEl.src = `${url}${sep}action=${actionParam}&payload=${qPayload}&callback=${cbName}&_t=${Date.now()}`;
+                    scriptEl.onerror = () => {
+                        if (settled) return;
+                        settled = true;
+                        clearTimeout(timer);
+                        cleanup();
+                        resolve({ ok: false, error: "Gagal memuat skrip dari Web App Apps Script." });
+                    };
+                    document.body.appendChild(scriptEl);
+                } catch (err) {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timer);
+                    cleanup();
+                    resolve({ ok: false, error: err && err.message ? err.message : "Error JSONP" });
+                }
+            });
+        }
+
+        async function callGasApi(payload, timeoutMs = 30000) {
             if (isSimulationMode()) {
                 return { simulated: true, ok: true };
             }
@@ -870,6 +927,18 @@
                 return { simulated: false, ok: true, data: json };
             } catch (err) {
                 clearTimeout(timer);
+
+                // Fallback ke GET/JSONP untuk aksi baca data bila POST fetch timeout / terblokir CORS
+                const readActions = ["ping", "getInitialData", "getSheetData"];
+                if (readActions.includes(payload && payload.action)) {
+                    const jsonpRes = await callGasJsonp(url, payload, timeoutMs);
+                    if (jsonpRes.ok) {
+                        hideConnectionError();
+                        updateConnectionBadge();
+                        return { simulated: false, ok: true, data: jsonpRes.data };
+                    }
+                }
+
                 const msg = err && err.name === "AbortError"
                     ? "Koneksi timeout (server lambat merespons)"
                     : (err && err.message ? err.message : "Tidak dapat menjangkau server Apps Script.");
@@ -942,11 +1011,41 @@
                         action: "getInitialData",
                         role: currentUser ? currentUser.Role : "",
                         userId: currentUser ? currentUser.User_ID : ""
-                    }, 12000);
+                    }, 30000);
 
                     if (!initRes.ok) {
                         if (notify) showToast("Gagal memuat data dari Google Sheets.", "error");
                         return;
+                    }
+
+                    if (initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
+                        db.users = initRes.data.users.map(u => ({
+                            User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
+                            Nama_Lengkap: String(u.nama ?? u.Nama_Lengkap ?? "").trim(),
+                            Role: String(u.role ?? u.Role ?? "KASIR / SA").trim().toUpperCase(),
+                            PIN_Password: String(u.pin ?? u.PIN_Password ?? "123456").trim(),
+                            Status_Aktif: String(u.status ?? u.Status_Aktif ?? "AKTIF").trim().toUpperCase()
+                        }));
+                    }
+
+                    if (currentUser) {
+                        // Prioritaskan sheet yang sedang dibuka agar tampil instan, lalu tarik sisa sheet bertahap
+                        const orderedSheets = [activeTab, ...TRANSACTION_SHEETS.filter(s => s !== activeTab)].filter(s => TRANSACTION_SHEETS.includes(s));
+                        for (const sheetName of orderedSheets) {
+                            const res = await callGasApi({
+                                action: "getSheetData",
+                                sheetName,
+                                role: currentUser.Role,
+                                userId: currentUser.User_ID
+                            }, 30000);
+                            if (res.ok && res.data && Array.isArray(res.data.rows)) {
+                                db.sheets[sheetName] = res.data.rows.map((r, i) => normalizeServerRow(sheetName, r, i));
+                                if (sheetName === activeTab) {
+                                    renderTabs();
+                                    renderSheetView();
+                                }
+                            }
+                        }
                     }
 
                     if (initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
@@ -1070,7 +1169,7 @@
 
                 // Jika belum ada di cache lokal & online, ambil dari Google Sheets
                 if (!user && !isSimulationMode()) {
-                    const initRes = await callGasApi({ action: "getInitialData" }, 10000);
+                    const initRes = await callGasApi({ action: "getInitialData" }, 25000);
                     if (initRes.ok && initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
                         db.users = initRes.data.users.map(u => ({
                             User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
