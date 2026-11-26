@@ -972,11 +972,19 @@
             const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY", "Quantity", "Jumlah"])) || 1;
 
             const priceVal = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price", "UnitPrice", "Harga", "HargaSatuan", "NormalPrice"]));
-            const amountVal = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT", "GrossAmount", "Total", "SubTotal", "Subtotal"]));
-            const discVal = parseCurrencyNumber(getFieldCI(raw, ["Disc", "DISC", "Discount", "Diskon", "DiscAmount", "Potongan"]));
-            const netVal = parseCurrencyNumber(getFieldCI(raw, ["NetAmount", "NETAMOUNT", "Net_Amount", "NetSales", "Net", "NetTotal", "FinalAmount"]));
+            const amountVal = parseCurrencyNumber(getFieldCI(raw, [
+                "Amount", "AMOUNT", "GrossAmount", "Total", "SubTotal", "Subtotal", "Gross"
+            ]));
+            const discVal = Math.abs(parseCurrencyNumber(getFieldCI(raw, [
+                "Disc", "DISC", "Discount", "Diskon", "DiscAmount", "Disc_Amount",
+                "DiscManual", "Disc_Manual", "ManualDisc", "Manual_Disc",
+                "DiscPercent", "DiscPct", "PromoDisc", "ExtDisc", "Potongan"
+            ])));
+            const netVal = parseCurrencyNumber(getFieldCI(raw, [
+                "NetAmount", "NETAMOUNT", "Net_Amount", "NetSales", "Net", "NetTotal", "FinalAmount", "AfterDisc", "AfterDiscount"
+            ]));
 
-            const finalAmount = amountVal || (priceVal * qty) || netVal || 0;
+            const finalAmount = amountVal || (priceVal * qty) || (netVal ? netVal + discVal : 0) || 0;
             const finalPrice = priceVal || (qty ? finalAmount / qty : finalAmount);
             const finalNet = netVal || Math.max(0, finalAmount - discVal);
 
