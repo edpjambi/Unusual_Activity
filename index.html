@@ -76,7 +76,7 @@
                     <span>Refresh Data</span>
                 </button>
 
-                <button type="button" onclick="openConfigModal()" class="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition">
+                <button type="button" id="btn-header-settings" onclick="openSettingsModal()" class="hidden px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition">
                     Pengaturan / GitHub Guide
                 </button>
 
@@ -88,6 +88,9 @@
                             <span id="header-user-role" class="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-indigo-100 text-indigo-700"></span>
                         </div>
                     </div>
+                    <button type="button" onclick="openChangePinModal()" class="px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition">
+                        Ubah PIN
+                    </button>
                     <button type="button" onclick="logoutUser()" class="px-2.5 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition">
                         Keluar
                     </button>
@@ -109,7 +112,7 @@
                 <button type="button" onclick="refreshAllData(true)" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold">
                     Coba Lagi
                 </button>
-                <button type="button" onclick="switchToSimulationTemporary()" class="px-3 py-1.5 rounded-lg bg-white border border-rose-300 hover:bg-rose-100 text-rose-800 font-bold">
+                <button type="button" id="btn-banner-sim" onclick="switchToSimulationTemporary()" class="hidden px-3 py-1.5 rounded-lg bg-white border border-rose-300 hover:bg-rose-100 text-rose-800 font-bold">
                     Beralih Sementara ke Simulasi Lokal
                 </button>
             </div>
@@ -300,7 +303,7 @@
             <div>
                 <strong>Audit Kasir MDS 312</strong> (Lippo Plaza Jambi • Store 312) — GitHub Pages & Google Sheets Connected.
             </div>
-            <button type="button" onclick="openConfigModal()" class="font-bold text-indigo-600 hover:underline">
+            <button type="button" id="btn-footer-settings" onclick="openSettingsModal()" class="hidden font-bold text-indigo-600 hover:underline">
                 Pengaturan / Panduan GitHub Pages
             </button>
         </div>
@@ -469,16 +472,50 @@
     </div>
 
     <!-- ===================================================== -->
+    <!-- MODAL 4B: UBAH PIN / PASSWORD MANDIRI (SEMUA ROLE)    -->
+    <!-- ===================================================== -->
+    <div id="change-pin-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">Ubah PIN / Password Akun</h3>
+                <button type="button" onclick="closeChangePinModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
+            </div>
+            <form onsubmit="submitChangePin(event)" class="p-5 space-y-3.5">
+                <div id="change-pin-user-label" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700"></div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">PIN / Password Lama <span class="text-rose-500">*</span></label>
+                    <input type="password" id="old-pin-input" required placeholder="Masukkan PIN saat ini"
+                        class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">PIN / Password Baru <span class="text-rose-500">*</span></label>
+                    <input type="password" id="new-pin-input" required minlength="4" placeholder="Minimal 4 karakter / angka"
+                        class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Konfirmasi PIN / Password Baru <span class="text-rose-500">*</span></label>
+                    <input type="password" id="confirm-pin-input" required minlength="4" placeholder="Ulangi PIN / Password baru"
+                        class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeChangePinModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">Simpan PIN Baru</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
     <!-- MODAL 5: PENGATURAN APPS SCRIPT & PANDUAN GITHUB PAGES -->
     <!-- ===================================================== -->
     <div id="config-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full my-6 overflow-hidden">
             <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                 <h3 class="font-bold text-slate-900 text-sm sm:text-base">Pengaturan Web App (/exec) & GitHub Pages</h3>
-                <button type="button" onclick="closeConfigModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
+                <button type="button" onclick="closeSettingsModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
             </div>
             <div class="p-5 space-y-5 text-xs">
-                <form onsubmit="saveGasConfig(event)" class="space-y-3.5">
+                <form onsubmit="saveSettings(event)" class="space-y-3.5">
                     <div>
                         <label class="block font-bold text-slate-800 mb-1">URL Google Apps Script Web App (/exec)</label>
                         <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec"
@@ -499,10 +536,10 @@
 
                     <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
                         <div class="flex gap-2">
-                            <button type="button" onclick="restoreDefaultGasUrl()" class="px-3 py-2 rounded-xl font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+                            <button type="button" onclick="resetDefaultUrl()" class="px-3 py-2 rounded-xl font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
                                 Pakai URL Default
                             </button>
-                            <button type="button" onclick="resetLocalDemoData()" class="px-3 py-2 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100">
+                            <button type="button" onclick="resetLocalSimulationData()" class="px-3 py-2 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100">
                                 Reset Data Lokal
                             </button>
                         </div>
@@ -673,6 +710,7 @@
 
         function updateConnectionBadge() {
             const badge = document.getElementById("conn-status-badge");
+            if (!badge) return;
             if (isSimulationMode()) {
                 badge.textContent = "Mode Simulasi Lokal";
                 badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200";
@@ -684,22 +722,41 @@
 
         function showConnectionError(detailText) {
             const banner = document.getElementById("conn-error-banner");
-            document.getElementById("conn-error-detail").textContent = detailText;
-            banner.classList.remove("hidden");
+            const detail = document.getElementById("conn-error-detail");
+            if (detail && detailText) detail.textContent = detailText;
+            if (banner) banner.classList.remove("hidden");
         }
 
         function hideConnectionError() {
-            document.getElementById("conn-error-banner").classList.add("hidden");
+            const banner = document.getElementById("conn-error-banner");
+            if (banner) banner.classList.add("hidden");
+        }
+
+        function updateAdminOnlyVisibility() {
+            const isAdmin = Boolean(currentUser && (currentUser.role === "ADMIN" || currentUser.Role === "ADMIN"));
+            const headerBtn = document.getElementById("btn-header-settings");
+            const footerBtn = document.getElementById("btn-footer-settings");
+            const bannerSimBtn = document.getElementById("btn-banner-sim");
+
+            if (isAdmin) {
+                if (headerBtn) headerBtn.classList.remove("hidden");
+                if (footerBtn) footerBtn.classList.remove("hidden");
+                if (bannerSimBtn) bannerSimBtn.classList.remove("hidden");
+            } else {
+                if (headerBtn) headerBtn.classList.add("hidden");
+                if (footerBtn) footerBtn.classList.add("hidden");
+                if (bannerSimBtn) bannerSimBtn.classList.add("hidden");
+                closeSettingsModal();
+            }
         }
 
         function switchToSimulationTemporary() {
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             setSimulationMode(true);
             hideConnectionError();
             updateConnectionBadge();
-            if (currentUser) {
-                renderTabs();
-                renderSheetView();
-            }
+            renderTabs();
+            renderSheetView();
             showToast("Beralih sementara ke Mode Simulasi Lokal.", "info");
         }
 
@@ -919,8 +976,9 @@
                 return;
             }
 
-            currentUser = user;
-            localStorage.setItem(KEY_SESSION, JSON.stringify(user));
+            currentUser = { ...user, role: user.Role };
+            localStorage.setItem(KEY_SESSION, JSON.stringify(currentUser));
+            updateAdminOnlyVisibility();
             showWorkspace();
             await refreshAllData(false);
             showToast(`Login berhasil: ${user.Nama_Lengkap} (${user.Role})`, "success");
@@ -929,6 +987,7 @@
         function logoutUser() {
             currentUser = null;
             localStorage.removeItem(KEY_SESSION);
+            updateAdminOnlyVisibility();
             document.getElementById("workspace-view").classList.add("hidden");
             document.getElementById("header-user-info").classList.add("hidden");
             document.getElementById("header-user-info").classList.remove("flex");
@@ -936,6 +995,7 @@
         }
 
         function showWorkspace() {
+            updateAdminOnlyVisibility();
             document.getElementById("login-view").classList.add("hidden");
             document.getElementById("workspace-view").classList.remove("hidden");
 
@@ -1805,34 +1865,111 @@
             showToast("Master User berhasil disimpan.", "success");
         }
 
+        function openChangePinModal() {
+            if (!currentUser) return;
+            document.getElementById("change-pin-user-label").innerHTML = `
+                Akun: <strong>${currentUser.Nama_Lengkap}</strong> (ID: <span class="font-mono">${currentUser.User_ID}</span> • ${currentUser.Role})
+            `;
+            document.getElementById("old-pin-input").value = "";
+            document.getElementById("new-pin-input").value = "";
+            document.getElementById("confirm-pin-input").value = "";
+            const modal = document.getElementById("change-pin-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+            document.getElementById("old-pin-input").focus();
+        }
+
+        function closeChangePinModal() {
+            const modal = document.getElementById("change-pin-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        }
+
+        async function submitChangePin(e) {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const oldPin = document.getElementById("old-pin-input").value.trim();
+            const newPin = document.getElementById("new-pin-input").value.trim();
+            const confirmPin = document.getElementById("confirm-pin-input").value.trim();
+
+            const target = db.users.find(u => normalizeId(u.User_ID) === normalizeId(currentUser.User_ID));
+            if (!target) {
+                showToast("Data user tidak ditemukan.", "error");
+                return;
+            }
+            if (String(target.PIN_Password).trim() !== oldPin) {
+                showToast("PIN / Password lama tidak sesuai.", "error");
+                return;
+            }
+            if (newPin.length < 4) {
+                showToast("PIN / Password baru minimal 4 karakter.", "error");
+                return;
+            }
+            if (newPin !== confirmPin) {
+                showToast("Konfirmasi PIN / Password baru tidak cocok.", "error");
+                return;
+            }
+
+            const res = await callGasApi({
+                action: "saveUser",
+                userId: target.User_ID,
+                nama: target.Nama_Lengkap,
+                role: target.Role,
+                pin: newPin,
+                status: target.Status_Aktif
+            });
+
+            if (!res.ok) {
+                showToast("Gagal memperbarui PIN ke Google Sheets.", "error");
+                return;
+            }
+
+            target.PIN_Password = newPin;
+            currentUser.PIN_Password = newPin;
+            saveDb();
+            localStorage.setItem(KEY_SESSION, JSON.stringify(currentUser));
+            if (currentUser.Role === "ADMIN") {
+                renderUsersTable();
+            }
+            closeChangePinModal();
+            showToast("PIN / Password berhasil diubah.", "success");
+        }
+
         // =====================================================
-        // 11. PENGATURAN & INISIALISASI
+        // 11. PENGATURAN (KHUSUS ADMIN) & INISIALISASI
         // =====================================================
-        function openConfigModal() {
+        function openSettingsModal() {
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             document.getElementById("gas-url-input").value = getGasUrl();
             document.getElementById("sim-mode-toggle").checked = isSimulationMode();
             document.getElementById("config-modal").classList.remove("hidden");
             document.getElementById("config-modal").classList.add("flex");
         }
 
-        function closeConfigModal() {
-            document.getElementById("config-modal").classList.add("hidden");
-            document.getElementById("config-modal").classList.remove("flex");
+        function closeSettingsModal() {
+            const modal = document.getElementById("config-modal");
+            if (modal) {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+            }
         }
 
-        function restoreDefaultGasUrl() {
+        function resetDefaultUrl() {
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             document.getElementById("gas-url-input").value = DEFAULT_GAS_URL;
             document.getElementById("sim-mode-toggle").checked = false;
             showToast("URL Web App bawaan diisi. Klik Simpan Pengaturan.", "info");
         }
 
-        async function saveGasConfig(e) {
+        async function saveSettings(e) {
             e.preventDefault();
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             const url = document.getElementById("gas-url-input").value.trim();
             const manualSim = document.getElementById("sim-mode-toggle").checked;
 
             localStorage.setItem(KEY_GAS_URL, url);
-            // Mode Simulasi Lokal otomatis OFF saat URL terisi, kecuali user mengaktifkannya secara manual
+            // Mode Simulasi Lokal otomatis OFF saat URL terisi, kecuali Admin mengaktifkannya secara manual
             if (!url) {
                 setSimulationMode(true);
             } else {
@@ -1841,7 +1978,7 @@
 
             hideConnectionError();
             updateConnectionBadge();
-            closeConfigModal();
+            closeSettingsModal();
 
             if (!isSimulationMode()) {
                 await refreshAllData(true);
@@ -1850,18 +1987,18 @@
             }
         }
 
-        function resetLocalDemoData() {
+        function resetLocalSimulationData() {
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             askConfirm(
                 "Reset Data Simulasi Lokal",
                 "Data transaksi dan user di penyimpanan lokal browser akan dikembalikan ke data contoh awal Store 312. Lanjutkan?",
                 () => {
+                    if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
                     db = createDefaultDb();
                     saveDb(db);
-                    closeConfigModal();
-                    if (currentUser) {
-                        renderTabs();
-                        renderSheetView();
-                    }
+                    closeSettingsModal();
+                    renderTabs();
+                    renderSheetView();
                     showToast("Data simulasi lokal direset ke awal.", "info");
                 }
             );
@@ -1875,6 +2012,7 @@
                 setSimulationMode(false);
             }
             updateConnectionBadge();
+            updateAdminOnlyVisibility();
 
             try {
                 const savedSess = localStorage.getItem(KEY_SESSION);
@@ -1882,7 +2020,8 @@
                     const parsed = JSON.parse(savedSess);
                     const validUser = db.users.find(u => normalizeId(u.User_ID) === normalizeId(parsed.User_ID));
                     if (validUser && String(validUser.Status_Aktif).toUpperCase() === "AKTIF") {
-                        currentUser = validUser;
+                        currentUser = { ...validUser, role: validUser.Role };
+                        updateAdminOnlyVisibility();
                         showWorkspace();
                     }
                 }
