@@ -931,7 +931,7 @@
                 // Fallback ke GET/JSONP untuk aksi baca data bila POST fetch timeout / terblokir CORS
                 const readActions = ["ping", "getInitialData", "getSheetData"];
                 if (readActions.includes(payload && payload.action)) {
-                    const jsonpRes = await callGasJsonp(url, payload, timeoutMs);
+                    const jsonpRes = await callGasJsonp(url, payload, Math.max(timeoutMs, 25000));
                     if (jsonpRes.ok) {
                         hideConnectionError();
                         updateConnectionBadge();
@@ -1037,7 +1037,7 @@
                                 sheetName,
                                 role: currentUser.Role,
                                 userId: currentUser.User_ID
-                            }, 30000);
+                            }, 25000);
                             if (res.ok && res.data && Array.isArray(res.data.rows)) {
                                 db.sheets[sheetName] = res.data.rows.map((r, i) => normalizeServerRow(sheetName, r, i));
                                 if (sheetName === activeTab) {
@@ -1046,40 +1046,6 @@
                                 }
                             }
                         }
-                    }
-
-                    if (initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
-                        db.users = initRes.data.users.map(u => ({
-                            User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
-                            Nama_Lengkap: String(u.nama ?? u.Nama_Lengkap ?? "").trim(),
-                            Role: String(u.role ?? u.Role ?? "KASIR / SA").trim().toUpperCase(),
-                            PIN_Password: String(u.pin ?? u.PIN_Password ?? "123456").trim(),
-                            Status_Aktif: String(u.status ?? u.Status_Aktif ?? "AKTIF").trim().toUpperCase()
-                        }));
-                    }
-
-                    if (currentUser) {
-                        // Prioritaskan sheet yang sedang dibuka agar tampil instan, lalu tarik sisa sheet
-                        const orderedSheets = [activeTab, ...TRANSACTION_SHEETS.filter(s => s !== activeTab)].filter(s => TRANSACTION_SHEETS.includes(s));
-                        const sheetPromises = orderedSheets.map(sheetName =>
-                            callGasApi({
-                                action: "getSheetData",
-                                sheetName,
-                                role: currentUser.Role,
-                                userId: currentUser.User_ID
-                            }, 15000).then(res => {
-                                if (res.ok && res.data && Array.isArray(res.data.rows)) {
-                                    db.sheets[sheetName] = res.data.rows.map((r, i) => normalizeServerRow(sheetName, r, i));
-                                    if (sheetName === activeTab) {
-                                        renderTabs();
-                                        renderSheetView();
-                                    }
-                                }
-                                return { sheetName, res };
-                            })
-                        );
-
-                        await Promise.all(sheetPromises);
                     }
 
                     saveDb();
