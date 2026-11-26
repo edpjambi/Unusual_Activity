@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audit Kasir MDS 312 • Lippo Plaza Jambi</title>
-    <!-- Tailwind CSS via CDN -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS (XLSX) via CDN untuk Import & Export Excel -->
+    <!-- SheetJS (XLSX) CDN untuk Import & Export Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,10 +35,10 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
-    <!-- Toast Notification Container (Pengganti alert) -->
+    <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0 pointer-events-none"></div>
 
-    <!-- Custom Confirm Modal (Pengganti confirm) -->
+    <!-- Custom Confirm Modal -->
     <div id="confirm-modal" class="fixed inset-0 z-[75] hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200">
             <h3 id="confirm-title" class="text-base font-bold text-slate-900 mb-2">Konfirmasi</h3>
@@ -51,7 +51,7 @@
     </div>
 
     <!-- ===================================================== -->
-    <!-- HEADER NAVIGASI                                       -->
+    <!-- HEADER NAVIGASI & STATUS KONEKSI                      -->
     <!-- ===================================================== -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-2.5">
@@ -62,15 +62,20 @@
                 <div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <h1 class="text-sm sm:text-lg font-extrabold text-slate-900 tracking-tight leading-none">Audit Kasir MDS 312</h1>
-                        <span id="conn-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                            Mode Simulasi Lokal
+                        <span id="conn-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Terhubung Google Sheets
                         </span>
                     </div>
                     <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">Lippo Plaza Jambi • Store 312</p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 sm:gap-3 ml-auto">
+            <div class="flex items-center gap-2 sm:gap-2.5 ml-auto">
+                <button type="button" id="btn-refresh-data" onclick="refreshAllData(true)" class="px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition flex items-center gap-1.5">
+                    <span id="refresh-spinner" class="hidden w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+                    <span>Refresh Data</span>
+                </button>
+
                 <button type="button" onclick="openConfigModal()" class="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition">
                     Pengaturan / GitHub Guide
                 </button>
@@ -92,6 +97,26 @@
     </header>
 
     <!-- ===================================================== -->
+    <!-- BANNER ERROR KONEKSI APPS SCRIPT (JIKA GAGAL)         -->
+    <!-- ===================================================== -->
+    <div id="conn-error-banner" class="hidden bg-rose-50 border-b border-rose-200">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-rose-900">
+            <div>
+                <strong class="font-extrabold">Gagal terhubung ke server Apps Script:</strong>
+                <span id="conn-error-detail">Periksa koneksi internet atau izin deploy Web App (Who has access: Anyone).</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" onclick="refreshAllData(true)" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold">
+                    Coba Lagi
+                </button>
+                <button type="button" onclick="switchToSimulationTemporary()" class="px-3 py-1.5 rounded-lg bg-white border border-rose-300 hover:bg-rose-100 text-rose-800 font-bold">
+                    Beralih Sementara ke Simulasi Lokal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
     <!-- HALAMAN LOGIN                                         -->
     <!-- ===================================================== -->
     <section id="login-view" class="flex-1 flex items-center justify-center p-4 sm:p-6">
@@ -106,7 +131,7 @@
 
             <form onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1.5">User_ID (CashNum / ID SPV / Admin)</label>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">User ID (CashNum / AuthID / Admin)</label>
                     <input type="text" id="login-userid" required placeholder="Contoh: 221521, 119710, atau 064593"
                         class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                 </div>
@@ -122,10 +147,10 @@
                 </button>
             </form>
 
-            <!-- Akun Contoh Cepat -->
+            <!-- Quick Login Contoh untuk Testing -->
             <div class="mt-6 pt-5 border-t border-slate-100">
                 <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 text-center">
-                    Akun Contoh Cepat (PIN: 123456)
+                    Quick Login Contoh (PIN: 123456)
                 </p>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button type="button" onclick="fillDemoLogin('221521', '123456')" class="p-2.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 text-left transition">
@@ -164,9 +189,6 @@
                 <button type="button" onclick="exportSheetToExcel()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm transition">
                     Export Sheet ke .xlsx
                 </button>
-                <button type="button" onclick="syncFromGas(true)" class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition">
-                    Refresh Data
-                </button>
             </div>
         </div>
 
@@ -177,15 +199,15 @@
                 <div id="stat-total" class="text-2xl font-extrabold text-slate-900 mt-1">0</div>
             </div>
             <div class="bg-white rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm">
-                <div class="text-[11px] font-semibold text-amber-800">Belum Remarks Kasir</div>
+                <div class="text-[11px] font-semibold text-amber-800">Pending Remarks Kasir</div>
                 <div id="stat-no-remarks" class="text-2xl font-extrabold text-amber-700 mt-1">0</div>
             </div>
             <div class="bg-white rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-sm">
-                <div class="text-[11px] font-semibold text-indigo-800">Siap / Menunggu Verifikasi SPV</div>
+                <div class="text-[11px] font-semibold text-indigo-800">Siap Verifikasi SPV</div>
                 <div id="stat-waiting-spv" class="text-2xl font-extrabold text-indigo-700 mt-1">0</div>
             </div>
             <div class="bg-white rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-sm">
-                <div class="text-[11px] font-semibold text-emerald-800">Sudah Diverifikasi SPV</div>
+                <div class="text-[11px] font-semibold text-emerald-800">Approved / Rejected</div>
                 <div id="stat-done-spv" class="text-2xl font-extrabold text-emerald-700 mt-1">0</div>
             </div>
         </div>
@@ -197,16 +219,16 @@
 
         <!-- Konten Sheet Transaksi -->
         <div id="sheet-content-panel" class="space-y-4">
-            <!-- Filter & Pencarian -->
+            <!-- Filter & Pencarian Cepat -->
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <input type="text" id="filter-keyword" oninput="renderSheetView()" placeholder="Cari SKU, No Trx, Deskripsi, Remarks..."
                         class="lg:col-span-2 px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
 
                     <select id="filter-audit-status" onchange="renderSheetView()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                        <option value="ALL">Semua Status</option>
-                        <option value="NO_REMARKS">Belum Remarks Kasir</option>
-                        <option value="WAITING_SPV">Menunggu Verifikasi SPV</option>
+                        <option value="ALL">Semua Status Audit</option>
+                        <option value="NO_REMARKS">Pending Remarks Kasir</option>
+                        <option value="WAITING_SPV">Siap Verifikasi SPV</option>
                         <option value="APPROVED">APPROVED</option>
                         <option value="REJECTED">REJECTED</option>
                     </select>
@@ -271,26 +293,26 @@
     </main>
 
     <!-- ===================================================== -->
-    <!-- FOOTER PANDUAN GITHUB PAGES                          -->
+    <!-- FOOTER                                                -->
     <!-- ===================================================== -->
     <footer class="bg-white border-t border-slate-200 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
             <div>
-                <strong>Audit Kasir MDS 312</strong> (Lippo Plaza Jambi • Store 312) — Siap di-host di GitHub Pages.
+                <strong>Audit Kasir MDS 312</strong> (Lippo Plaza Jambi • Store 312) — GitHub Pages & Google Sheets Connected.
             </div>
-            <button type="button" onclick="openConfigModal('github')" class="font-bold text-indigo-600 hover:underline">
-                Panduan Upload GitHub Pages & URL Apps Script
+            <button type="button" onclick="openConfigModal()" class="font-bold text-indigo-600 hover:underline">
+                Pengaturan / Panduan GitHub Pages
             </button>
         </div>
     </footer>
 
     <!-- ===================================================== -->
-    <!-- MODAL 1: INPUT REMARKS KASIR                          -->
+    <!-- MODAL 1: INPUT / EDIT REMARKS KASIR                   -->
     <!-- ===================================================== -->
     <div id="remarks-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
             <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                <h3 class="font-bold text-slate-900 text-sm sm:text-base">Input / Perbarui Remarks Kasir</h3>
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">Input / Edit Remarks Kasir</h3>
                 <button type="button" onclick="closeRemarksModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
             </div>
             <form onsubmit="submitRemarks(event)" class="p-5 space-y-4">
@@ -348,7 +370,7 @@
                     <div class="flex items-center justify-between mb-1.5">
                         <label class="text-xs font-bold text-slate-700">Paraf / TTD Digital SPV <span class="text-rose-500">*</span></label>
                         <button type="button" onclick="clearCanvas()" class="px-2.5 py-1 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100">
-                            Clear Paraf
+                            Hapus / Ulangi Paraf
                         </button>
                     </div>
                     <div class="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden">
@@ -376,7 +398,7 @@
             </div>
             <div class="p-5 space-y-4">
                 <p class="text-xs text-slate-600 leading-relaxed">
-                    Pilih file <strong>.xlsx</strong> aktivitas kasir harian. Setiap sheet diperiksa secara terpisah: baris transaksi yang sama persis dengan data yang sudah ada akan <strong>ditolak (rejected duplicate)</strong>.
+                    Pilih file <strong>.xlsx</strong> aktivitas kasir harian. Setiap sheet diperiksa secara terpisah menggunakan <em>composite unique key</em>: baris transaksi yang sama persis dengan data yang sudah ada akan <strong>ditolak (rejected duplicate)</strong>.
                 </p>
 
                 <label class="block border-2 border-dashed border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 rounded-2xl p-6 text-center cursor-pointer transition">
@@ -456,19 +478,36 @@
                 <button type="button" onclick="closeConfigModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
             </div>
             <div class="p-5 space-y-5 text-xs">
-                <form onsubmit="saveGasConfig(event)" class="space-y-3">
-                    <label class="block font-bold text-slate-800">URL Google Apps Script Web App (/exec)</label>
-                    <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycbwEOxipUNxnKSwMYImTzUxa6-9uiCr4Th__eiCcWu8J0AsmjBa-2gYlQn2rr07tcks/exec"
-                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                    <p class="text-[11px] text-slate-500">
-                        Kosongkan untuk menggunakan <strong>Mode Simulasi Lokal</strong>. Jika diisi, aplikasi mengirim <code>POST</code> dengan <code>Content-Type: text/plain;charset=utf-8</code> dan otomatis jatuh ke mode simulasi jika gagal/offline.
-                    </p>
+                <form onsubmit="saveGasConfig(event)" class="space-y-3.5">
+                    <div>
+                        <label class="block font-bold text-slate-800 mb-1">URL Google Apps Script Web App (/exec)</label>
+                        <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+
+                    <!-- Sakelar Manual Mode Simulasi Lokal -->
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                        <div>
+                            <div class="font-bold text-slate-900">Mode Simulasi Lokal (Offline Testing)</div>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Otomatis OFF saat URL Web App terisi. Aktifkan secara manual hanya jika ingin menguji secara offline.</p>
+                        </div>
+                        <label class="inline-flex items-center cursor-pointer shrink-0">
+                            <input type="checkbox" id="sim-mode-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all relative peer-checked:bg-amber-500"></div>
+                        </label>
+                    </div>
+
                     <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-                        <button type="button" onclick="resetLocalDemoData()" class="px-3 py-2 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100">
-                            Reset Data Simulasi Lokal
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="restoreDefaultGasUrl()" class="px-3 py-2 rounded-xl font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+                                Pakai URL Default
+                            </button>
+                            <button type="button" onclick="resetLocalDemoData()" class="px-3 py-2 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100">
+                                Reset Data Lokal
+                            </button>
+                        </div>
                         <button type="submit" class="px-4 py-2 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">
-                            Simpan URL
+                            Simpan Pengaturan
                         </button>
                     </div>
                 </form>
@@ -480,11 +519,8 @@
                         <li>Buat repository baru di GitHub (misalnya <code>audit-kasir-mds-312</code>).</li>
                         <li>Upload file ini dengan nama <strong><code>index.html</code></strong> ke root repository, lalu commit.</li>
                         <li>Buka <strong>Settings → Pages</strong>, pilih <strong>Branch: main</strong> dan folder <strong>/(root)</strong>, lalu klik <strong>Save</strong>.</li>
-                        <li>Akses link GitHub Pages yang muncul, lalu tempel URL Web App <code>/exec</code> pada kolom di atas.</li>
+                        <li>Akses link GitHub Pages Anda — aplikasi otomatis terhubung ke Google Sheets melalui URL Web App bawaan.</li>
                     </ol>
-                    <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 mt-2">
-                        <strong>Catatan Apps Script:</strong> Karena antarmuka web di-host di GitHub Pages, file <code>Index.html</code> di dalam proyek Google Apps Script <strong>bisa dihapus</strong> (cukup simpan <code>Kode.gs</code> dan deploy sebagai Web App).
-                    </div>
                 </div>
             </div>
         </div>
@@ -492,8 +528,10 @@
 
     <script>
         // =====================================================
-        // 1. KONFIGURASI & KUNCI STORAGE
+        // 1. KONFIGURASI DEFAULT & KUNCI STORAGE
         // =====================================================
+        const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwEOxipUNxnKSwMYImTzUxa6-9uiCr4Th__eiCcWu8J0AsmjBa-2gYlQn2rr07tcks/exec";
+
         const TRANSACTION_SHEETS = [
             "Unmatch Transaksi",
             "Parked Invoice",
@@ -506,9 +544,10 @@
         ];
         const MASTER_USER_TAB = "Master User";
 
-        const KEY_DB = "MDS312_GH_DB_V1";
-        const KEY_GAS_URL = "MDS312_GH_GAS_URL_V1";
-        const KEY_SESSION = "MDS312_GH_SESSION_V1";
+        const KEY_DB = "MDS312_GH_DB_V2";
+        const KEY_GAS_URL = "MDS312_GH_GAS_URL_V2";
+        const KEY_SIM_MODE = "MDS312_GH_SIM_MODE_V2";
+        const KEY_SESSION = "MDS312_GH_SESSION_V2";
 
         function normalizeId(val) {
             if (val === null || val === undefined) return "";
@@ -533,7 +572,7 @@
         }
 
         // =====================================================
-        // 2. DATA SIMULASI AWAL STORE 312
+        // 2. DATA CONTOH / CADANGAN LOKAL STORE 312
         // =====================================================
         function createDefaultDb() {
             return {
@@ -574,27 +613,8 @@
                             Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
                         }
                     ],
-                    "Item Correct": [
-                        {
-                            id: "IC-1", TrxDate: "2026-11-27", TrxTime: "12:05:19", RegNum: "POS-03",
-                            TRXNUM: "TRX-90102", SKU: "8995500119", Description: "Celana Jeans Slimfit 31",
-                            Amount: 289000, CashNum: "221521", AuthID: "119710",
-                            Remarks_Kasir: "Salah scan barcode size L, dikoreksi ke size M.",
-                            Waktu_Remarks_Kasir: "2026-11-27 12:15:00",
-                            Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
-                            Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
-                        }
-                    ],
-                    "Void-Bill Cancelation": [
-                        {
-                            id: "VB-1", TrxDate: "2026-11-27", TrxTime: "13:20:44", RegNum: "POS-01",
-                            TRXNUM: "0", SKU: "8996600701", Description: "VOID - Dompet Pria Coklat",
-                            Amount: 179000, CashNum: "221521", AuthID: "119710",
-                            Remarks_Kasir: "", Waktu_Remarks_Kasir: "",
-                            Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
-                            Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
-                        }
-                    ],
+                    "Item Correct": [],
+                    "Void-Bill Cancelation": [],
                     "Return": [],
                     "Price Overide": [],
                     "Print Duplicate": [],
@@ -606,7 +626,7 @@
         let db = loadDb();
         let currentUser = null;
         let activeTab = TRANSACTION_SHEETS[0];
-        let activeActionTarget = null; // { sheetName, trxId }
+        let activeActionTarget = null;
         let hasSigDrawn = false;
 
         function loadDb() {
@@ -628,94 +648,197 @@
             try {
                 localStorage.setItem(KEY_DB, JSON.stringify(obj));
             } catch (e) {
-                showToast("Gagal menyimpan ke localStorage.", "error");
+                showToast("Gagal menyimpan ke penyimpanan browser.", "error");
             }
         }
 
         function getGasUrl() {
-            return (localStorage.getItem(KEY_GAS_URL) || "").trim();
+            const saved = localStorage.getItem(KEY_GAS_URL);
+            if (saved === null) {
+                localStorage.setItem(KEY_GAS_URL, DEFAULT_GAS_URL);
+                return DEFAULT_GAS_URL;
+            }
+            return saved.trim();
         }
 
-        function updateConnectionStatus(onlineSuccess = null) {
+        function isSimulationMode() {
+            const url = getGasUrl();
+            if (!url) return true;
+            return localStorage.getItem(KEY_SIM_MODE) === "true";
+        }
+
+        function setSimulationMode(val) {
+            localStorage.setItem(KEY_SIM_MODE, val ? "true" : "false");
+        }
+
+        function updateConnectionBadge() {
             const badge = document.getElementById("conn-status-badge");
-            const url = getGasUrl();
-            if (!url) {
+            if (isSimulationMode()) {
                 badge.textContent = "Mode Simulasi Lokal";
-                badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200";
-                return;
-            }
-            if (onlineSuccess === false) {
-                badge.textContent = "Fallback Simulasi Lokal";
-                badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200";
+                badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200";
             } else {
-                badge.textContent = "Apps Script Terhubung";
-                badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+                badge.textContent = "Terhubung Google Sheets";
+                badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
             }
         }
 
-        // Komunikasi ke Google Apps Script via fetch POST (text/plain;charset=utf-8) dengan fallback ke simulasi lokal
-        async function postToAppsScript(payload) {
-            const url = getGasUrl();
-            if (!url) {
-                updateConnectionStatus(null);
+        function showConnectionError(detailText) {
+            const banner = document.getElementById("conn-error-banner");
+            document.getElementById("conn-error-detail").textContent = detailText;
+            banner.classList.remove("hidden");
+        }
+
+        function hideConnectionError() {
+            document.getElementById("conn-error-banner").classList.add("hidden");
+        }
+
+        function switchToSimulationTemporary() {
+            setSimulationMode(true);
+            hideConnectionError();
+            updateConnectionBadge();
+            if (currentUser) {
+                renderTabs();
+                renderSheetView();
+            }
+            showToast("Beralih sementara ke Mode Simulasi Lokal.", "info");
+        }
+
+        // =====================================================
+        // 3. KOMUNIKASI BACKEND GOOGLE APPS SCRIPT (FETCH POST)
+        // =====================================================
+        async function callGasApi(payload) {
+            if (isSimulationMode()) {
                 return { simulated: true, ok: true };
             }
+            const url = getGasUrl();
+            if (!url) {
+                setSimulationMode(true);
+                updateConnectionBadge();
+                return { simulated: true, ok: true };
+            }
+
             try {
                 const resp = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                if (!resp.ok) throw new Error("HTTP " + resp.status);
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+                }
                 const json = await resp.json();
-                updateConnectionStatus(true);
-                return { simulated: false, ok: json.ok !== false, data: json };
+                if (json && json.ok === false) {
+                    throw new Error(json.error || "Apps Script mengembalikan error.");
+                }
+                hideConnectionError();
+                updateConnectionBadge();
+                return { simulated: false, ok: true, data: json };
             } catch (err) {
-                console.warn("GAS fetch gagal, fallback ke simulasi lokal:", err);
-                updateConnectionStatus(false);
-                return { simulated: true, ok: true, fallback: true };
+                const msg = err && err.message ? err.message : "Tidak dapat menjangkau server Apps Script.";
+                showConnectionError(`${msg}. Pastikan Web App sudah di-deploy dengan akses 'Anyone'.`);
+                return { simulated: false, ok: false, error: msg };
             }
         }
 
-        async function syncFromGas(notify = false) {
-            const url = getGasUrl();
-            if (!url) {
-                if (notify) showToast("Mode Simulasi Lokal aktif (belum ada URL Apps Script).", "info");
+        function normalizeServerRow(sheetName, raw, idx) {
+            const trxNum = raw.TRXNUM ?? raw.TrxNum ?? raw.ParkedInvoiceNumber ?? raw.Invoice ?? "";
+            const trxDate = raw.TrxDate ?? raw.TRXDATE ?? raw.Date ?? "";
+            const trxTime = raw.TrxTime ?? raw.CreateTime ?? raw.TimeOfParking ?? "";
+            const regNum = raw.RegNum ?? raw.REGNUM ?? raw.StoreCounter ?? "POS-01";
+            const sku = raw.SKU ?? "";
+            const desc = raw.Description ?? raw.Item ?? raw.Keterangan ?? "-";
+            const amtRaw = raw.Amount ?? raw.Total ?? raw.Nominal ?? 0;
+            const amount = Number(String(amtRaw).replace(/[^0-9.-]/g, "")) || 0;
+            const cashNum = raw.CashNum ?? raw["Cash Num"] ?? raw["Cashier Name and ID"] ?? "";
+            const authId = raw.AuthID ?? raw.AuthId ?? "";
+
+            return {
+                id: raw.id || `${sheetName}-R${raw._rowIndex || idx}`,
+                _rowIndex: raw._rowIndex || null,
+                TrxDate: String(trxDate).trim(),
+                TrxTime: String(trxTime).trim(),
+                RegNum: String(regNum).trim(),
+                TRXNUM: String(trxNum).trim(),
+                SKU: String(sku).trim(),
+                Description: String(desc).trim(),
+                Amount: amount,
+                CashNum: String(cashNum).trim(),
+                AuthID: String(authId).trim(),
+                Remarks_Kasir: String(raw.Remarks_Kasir || "").trim(),
+                Waktu_Remarks_Kasir: String(raw.Waktu_Remarks_Kasir || "").trim(),
+                Status_Verifikasi_SPV: String(raw.Status_Verifikasi_SPV || "PENDING").trim() || "PENDING",
+                SPV_Verifikator_ID: String(raw.SPV_Verifikator_ID || "").trim(),
+                SPV_Verifikator_Nama: String(raw.SPV_Verifikator_Nama || "").trim(),
+                Catatan_SPV: String(raw.Catatan_SPV || "").trim(),
+                Paraf_TTD_Digital_SPV: String(raw.Paraf_TTD_Digital_SPV || "").trim(),
+                Waktu_Verifikasi_SPV: String(raw.Waktu_Verifikasi_SPV || "").trim()
+            };
+        }
+
+        async function refreshAllData(notify = false) {
+            if (isSimulationMode()) {
+                if (notify) showToast("Mode Simulasi Lokal aktif (data tersimpan di browser).", "info");
                 return;
             }
-            const res = await postToAppsScript({
-                action: "getInitialData",
-                role: currentUser ? currentUser.Role : "",
-                userId: currentUser ? currentUser.User_ID : ""
-            });
-            if (!res.simulated && res.data) {
-                if (Array.isArray(res.data.users) && res.data.users.length > 0) {
-                    db.users = res.data.users.map(u => ({
-                        User_ID: String(u.userId || u.User_ID || ""),
-                        Nama_Lengkap: String(u.nama || u.Nama_Lengkap || ""),
-                        Role: String(u.role || u.Role || "KASIR / SA"),
-                        PIN_Password: String(u.pin || u.PIN_Password || "123456"),
-                        Status_Aktif: String(u.status || u.Status_Aktif || "AKTIF")
+
+            const spinner = document.getElementById("refresh-spinner");
+            if (spinner) spinner.classList.remove("hidden");
+
+            try {
+                // 1. Ambil Master User & ringkasan awal
+                const initRes = await callGasApi({
+                    action: "getInitialData",
+                    role: currentUser ? currentUser.Role : "",
+                    userId: currentUser ? currentUser.User_ID : ""
+                });
+
+                if (!initRes.ok) {
+                    if (notify) showToast("Gagal memuat data dari Google Sheets.", "error");
+                    return;
+                }
+
+                if (initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
+                    db.users = initRes.data.users.map(u => ({
+                        User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
+                        Nama_Lengkap: String(u.nama ?? u.Nama_Lengkap ?? "").trim(),
+                        Role: String(u.role ?? u.Role ?? "KASIR / SA").trim().toUpperCase(),
+                        PIN_Password: String(u.pin ?? u.PIN_Password ?? "123456").trim(),
+                        Status_Aktif: String(u.status ?? u.Status_Aktif ?? "AKTIF").trim().toUpperCase()
                     }));
                 }
-                if (res.data.sheetsData && typeof res.data.sheetsData === "object") {
-                    TRANSACTION_SHEETS.forEach(sName => {
-                        if (Array.isArray(res.data.sheetsData[sName])) {
-                            db.sheets[sName] = res.data.sheetsData[sName];
+
+                // 2. Jika sudah login, ambil seluruh 8 sheet transaksi agar badge & filter selalu mutakhir
+                if (currentUser) {
+                    const sheetPromises = TRANSACTION_SHEETS.map(sheetName =>
+                        callGasApi({
+                            action: "getSheetData",
+                            sheetName,
+                            role: currentUser.Role,
+                            userId: currentUser.User_ID
+                        }).then(res => ({ sheetName, res }))
+                    );
+
+                    const results = await Promise.all(sheetPromises);
+                    results.forEach(({ sheetName, res }) => {
+                        if (res.ok && res.data && Array.isArray(res.data.rows)) {
+                            db.sheets[sheetName] = res.data.rows.map((r, i) => normalizeServerRow(sheetName, r, i));
                         }
                     });
                 }
+
                 saveDb();
-                renderTabs();
-                renderSheetView();
-                if (notify) showToast("Data tersinkronisasi dari Google Sheets.", "success");
-            } else if (notify) {
-                showToast("Menampilkan data lokal (fallback/simulasi).", "info");
+                if (currentUser) {
+                    renderTabs();
+                    renderSheetView();
+                }
+                if (notify) showToast("Data berhasil disinkronkan dari Google Sheets.", "success");
+            } finally {
+                if (spinner) spinner.classList.add("hidden");
             }
         }
 
         // =====================================================
-        // 3. TOAST & CUSTOM CONFIRM
+        // 4. TOAST & CUSTOM CONFIRM
         // =====================================================
         function showToast(msg, type = "success") {
             const container = document.getElementById("toast-container");
@@ -755,17 +878,32 @@
         }
 
         // =====================================================
-        // 4. LOGIN & LOGOUT
+        // 5. LOGIN & LOGOUT
         // =====================================================
         function fillDemoLogin(uid, pin) {
             document.getElementById("login-userid").value = uid;
             document.getElementById("login-pin").value = pin;
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
             const uid = document.getElementById("login-userid").value.trim();
             const pin = document.getElementById("login-pin").value.trim();
+
+            // Jika terhubung ke Google Sheets, pastikan daftar Master User terbaru ditarik dulu
+            if (!isSimulationMode()) {
+                const initRes = await callGasApi({ action: "getInitialData" });
+                if (initRes.ok && initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
+                    db.users = initRes.data.users.map(u => ({
+                        User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
+                        Nama_Lengkap: String(u.nama ?? u.Nama_Lengkap ?? "").trim(),
+                        Role: String(u.role ?? u.Role ?? "KASIR / SA").trim().toUpperCase(),
+                        PIN_Password: String(u.pin ?? u.PIN_Password ?? "123456").trim(),
+                        Status_Aktif: String(u.status ?? u.Status_Aktif ?? "AKTIF").trim().toUpperCase()
+                    }));
+                    saveDb();
+                }
+            }
 
             const user = db.users.find(u =>
                 normalizeId(u.User_ID) === normalizeId(uid) &&
@@ -773,18 +911,18 @@
             );
 
             if (!user) {
-                showToast("User_ID atau PIN/Password salah.", "error");
+                showToast("User ID atau PIN/Password tidak cocok dengan Master User.", "error");
                 return;
             }
             if (String(user.Status_Aktif).toUpperCase() !== "AKTIF") {
-                showToast("Akun tidak aktif.", "error");
+                showToast("Akun berstatus NONAKTIF. Hubungi Admin.", "error");
                 return;
             }
 
             currentUser = user;
             localStorage.setItem(KEY_SESSION, JSON.stringify(user));
             showWorkspace();
-            syncFromGas(false);
+            await refreshAllData(false);
             showToast(`Login berhasil: ${user.Nama_Lengkap} (${user.Role})`, "success");
         }
 
@@ -814,15 +952,15 @@
             if (currentUser.Role === "KASIR / SA") {
                 adminBar.classList.add("hidden");
                 adminBar.classList.remove("flex");
-                infoBox.innerHTML = `<span class="font-bold text-emerald-700">Role KASIR / SA:</span> Menampilkan baris dengan <strong>CashNum = ${currentUser.User_ID}</strong>. Silakan isi <strong>Remarks_Kasir</strong> agar dapat diverifikasi SPV.`;
+                infoBox.innerHTML = `<span class="font-bold text-emerald-700">Role KASIR / SA:</span> Menampilkan transaksi milik <strong>CashNum = ${currentUser.User_ID}</strong> di seluruh 8 sheet. Isi & edit <strong>Remarks_Kasir</strong> selama belum diverifikasi SPV.`;
             } else if (currentUser.Role === "SPV") {
                 adminBar.classList.add("hidden");
                 adminBar.classList.remove("flex");
-                infoBox.innerHTML = `<span class="font-bold text-indigo-700">Role SPV:</span> Menampilkan baris dengan <strong>AuthID = ${currentUser.User_ID}</strong>. Tombol Verifikasi terbuka setelah <strong>Remarks_Kasir</strong> terisi.`;
+                infoBox.innerHTML = `<span class="font-bold text-indigo-700">Role SPV:</span> Menampilkan transaksi dengan <strong>AuthID = ${currentUser.User_ID}</strong>. Tombol verifikasi terkunci sampai <strong>Remarks_Kasir</strong> diisi.`;
             } else {
                 adminBar.classList.remove("hidden");
                 adminBar.classList.add("flex");
-                infoBox.innerHTML = `<span class="font-bold text-rose-700">Role ADMIN:</span> Akses penuh seluruh sheet transaksi, upload Excel harian (anti-duplikat per sheet), export .xlsx, dan kelola Master User.`;
+                infoBox.innerHTML = `<span class="font-bold text-rose-700">Role ADMIN:</span> Akses penuh seluruh 8 sheet transaksi, Upload Excel Harian (anti-duplikat per sheet), Export .xlsx, dan kelola <strong>Master User</strong>.`;
             }
 
             if (activeTab === MASTER_USER_TAB && currentUser.Role !== "ADMIN") {
@@ -834,7 +972,7 @@
         }
 
         // =====================================================
-        // 5. TABS, HAK AKSES BARIS & RENDER
+        // 6. TABS, HAK AKSES BARIS & RENDER
         // =====================================================
         function getVisibleRowsForSheet(sheetName) {
             const list = db.sheets[sheetName] || [];
@@ -847,7 +985,7 @@
             if (currentUser.Role === "SPV") {
                 return list.filter(r => normalizeId(r.AuthID) === myId);
             }
-            return list; // ADMIN
+            return list;
         }
 
         function renderTabs() {
@@ -889,15 +1027,15 @@
                 return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800">REJECTED</span>`;
             }
             if (!remarksFilled) {
-                return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800">Belum Remarks</span>`;
+                return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800">Pending Remarks</span>`;
             }
-            return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800">Menunggu SPV</span>`;
+            return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800">Siap Verifikasi SPV</span>`;
         }
 
         function renderStats(rows) {
             const total = rows.length;
-            const noRemarks = rows.filter(r => !(r.Remarks_Kasir || "").trim() && (r.Status_Verifikasi_SPV || "PENDING") === "PENDING").length;
-            const waitingSpv = rows.filter(r => Boolean((r.Remarks_Kasir || "").trim()) && (r.Status_Verifikasi_SPV || "PENDING") === "PENDING").length;
+            const noRemarks = rows.filter(r => !(r.Remarks_Kasir || "").trim() && String(r.Status_Verifikasi_SPV || "PENDING").toUpperCase() === "PENDING").length;
+            const waitingSpv = rows.filter(r => Boolean((r.Remarks_Kasir || "").trim()) && String(r.Status_Verifikasi_SPV || "PENDING").toUpperCase() === "PENDING").length;
             const doneSpv = rows.filter(r => ["APPROVED", "REJECTED"].includes(String(r.Status_Verifikasi_SPV || "").toUpperCase())).length;
 
             document.getElementById("stat-total").textContent = total;
@@ -909,20 +1047,39 @@
         function buildRowActionsHtml(row) {
             const role = currentUser.Role;
             const hasRemarks = Boolean((row.Remarks_Kasir || "").trim());
+            const status = String(row.Status_Verifikasi_SPV || "PENDING").toUpperCase();
+            const isVerified = status === "APPROVED" || status === "REJECTED";
             const isCashOwner = normalizeId(row.CashNum) === normalizeId(currentUser.User_ID);
             const isSpvOwner = normalizeId(row.AuthID) === normalizeId(currentUser.User_ID);
 
             let parts = [];
 
-            if ((role === "KASIR / SA" && isCashOwner) || role === "ADMIN") {
+            // Kasir hanya bisa mengisi & mengedit Remarks_Kasir selama belum diverifikasi SPV (Admin bisa edit kapan saja)
+            if (role === "ADMIN") {
                 parts.push(`
                     <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${row.id}')"
                         class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                         ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
                     </button>
                 `);
+            } else if (role === "KASIR / SA" && isCashOwner) {
+                if (!isVerified) {
+                    parts.push(`
+                        <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${row.id}')"
+                            class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
+                            ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
+                        </button>
+                    `);
+                } else {
+                    parts.push(`
+                        <span class="px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-500">
+                            Terkunci (Sudah Diverifikasi SPV)
+                        </span>
+                    `);
+                }
             }
 
+            // SPV hanya bisa verifikasi transaksi AuthID miliknya & jika Remarks_Kasir sudah terisi
             if (role === "SPV" && isSpvOwner) {
                 if (!hasRemarks) {
                     parts.push(`
@@ -935,13 +1092,26 @@
                     parts.push(`
                         <button type="button" onclick="openVerifyModal('${activeTab.replace(/'/g, "\\'")}', '${row.id}')"
                             class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition">
-                            Verifikasi & Paraf
+                            ${isVerified ? "Ubah Verifikasi & Paraf" : "Verifikasi & Paraf"}
                         </button>
                     `);
                 }
             }
 
             return `<div class="flex flex-wrap items-center gap-1.5">${parts.join("")}</div>`;
+        }
+
+        function renderSignatureDisplay(sigVal) {
+            if (!sigVal) {
+                return `<span class="text-[10px] text-slate-400 block mt-0.5">Belum ada paraf</span>`;
+            }
+            if (sigVal.startsWith("data:image")) {
+                return `<img src="${sigVal}" alt="Paraf SPV" class="h-8 w-20 object-contain border border-slate-200 rounded bg-white p-0.5 mt-1">`;
+            }
+            if (sigVal.startsWith("http")) {
+                return `<a href="${sigVal}" target="_blank" rel="noopener" class="inline-block mt-1 text-[10px] font-bold text-indigo-600 underline">Lihat Paraf Digital (Drive)</a>`;
+            }
+            return `<span class="text-[10px] font-semibold text-emerald-700 block mt-0.5">Paraf Digital Tersimpan</span>`;
         }
 
         function renderSheetView() {
@@ -995,99 +1165,93 @@
                 return;
             }
 
-            tbody.innerHTML = rows.map(r => {
-                const sigImg = r.Paraf_TTD_Digital_SPV
-                    ? `<img src="${r.Paraf_TTD_Digital_SPV}" alt="Paraf SPV" class="h-8 w-20 object-contain border border-slate-200 rounded bg-white p-0.5 mt-1">`
-                    : `<span class="text-[10px] text-slate-400 block mt-0.5">Belum ada paraf</span>`;
+            tbody.innerHTML = rows.map(r => `
+                <tr class="hover:bg-slate-50/80 align-top">
+                    <td class="py-3 px-3.5 whitespace-nowrap">
+                        <div class="font-bold text-slate-900">${r.TrxDate || "-"}</div>
+                        <div class="text-[11px] text-slate-500">${r.TrxTime || ""} • <span class="font-semibold text-indigo-600">${r.RegNum || "-"}</span></div>
+                    </td>
+                    <td class="py-3 px-3.5">
+                        <div class="font-mono font-bold text-slate-900">${r.TRXNUM || "-"} <span class="text-slate-300">|</span> ${r.SKU || "-"}</div>
+                        <div class="text-slate-600 mt-0.5">${r.Description || "-"}</div>
+                    </td>
+                    <td class="py-3 px-3.5 text-right font-bold text-slate-900 whitespace-nowrap">${formatRupiah(r.Amount)}</td>
+                    <td class="py-3 px-3.5 whitespace-nowrap">
+                        <div class="text-[11px]">CashNum: <strong class="font-mono">${r.CashNum || "-"}</strong></div>
+                        <div class="text-[11px]">AuthID: <strong class="font-mono text-indigo-700">${r.AuthID || "-"}</strong></div>
+                    </td>
+                    <td class="py-3 px-3.5 max-w-[220px]">
+                        ${(r.Remarks_Kasir || "").trim()
+                            ? `<div class="text-slate-800 font-medium break-words">${r.Remarks_Kasir}</div><div class="text-[10px] text-slate-400 mt-0.5">${r.Waktu_Remarks_Kasir || ""}</div>`
+                            : `<span class="text-[11px] italic text-amber-600">Belum diisi kasir</span>`}
+                    </td>
+                    <td class="py-3 px-3.5">
+                        ${getStatusBadge(r)}
+                        ${r.SPV_Verifikator_Nama ? `<div class="text-[10px] text-slate-500 mt-1">SPV: <strong>${r.SPV_Verifikator_Nama}</strong> (${r.Waktu_Verifikasi_SPV || ""})</div>` : ""}
+                        ${r.Catatan_SPV ? `<div class="text-[10px] text-slate-600 italic mt-0.5">"${r.Catatan_SPV}"</div>` : ""}
+                        ${renderSignatureDisplay(r.Paraf_TTD_Digital_SPV)}
+                    </td>
+                    <td class="py-3 px-3.5 whitespace-nowrap">${buildRowActionsHtml(r)}</td>
+                </tr>
+            `).join("");
 
-                return `
-                    <tr class="hover:bg-slate-50/80 align-top">
-                        <td class="py-3 px-3.5 whitespace-nowrap">
-                            <div class="font-bold text-slate-900">${r.TrxDate || "-"}</div>
-                            <div class="text-[11px] text-slate-500">${r.TrxTime || ""} • <span class="font-semibold text-indigo-600">${r.RegNum || "-"}</span></div>
-                        </td>
-                        <td class="py-3 px-3.5">
-                            <div class="font-mono font-bold text-slate-900">${r.TRXNUM || "-"} <span class="text-slate-300">|</span> ${r.SKU || "-"}</div>
-                            <div class="text-slate-600 mt-0.5">${r.Description || "-"}</div>
-                        </td>
-                        <td class="py-3 px-3.5 text-right font-bold text-slate-900 whitespace-nowrap">${formatRupiah(r.Amount)}</td>
-                        <td class="py-3 px-3.5 whitespace-nowrap">
-                            <div class="text-[11px]">CashNum: <strong class="font-mono">${r.CashNum || "-"}</strong></div>
-                            <div class="text-[11px]">AuthID: <strong class="font-mono text-indigo-700">${r.AuthID || "-"}</strong></div>
-                        </td>
-                        <td class="py-3 px-3.5 max-w-[220px]">
-                            ${(r.Remarks_Kasir || "").trim()
-                                ? `<div class="text-slate-800 font-medium break-words">${r.Remarks_Kasir}</div><div class="text-[10px] text-slate-400 mt-0.5">${r.Waktu_Remarks_Kasir || ""}</div>`
-                                : `<span class="text-[11px] italic text-amber-600">Belum diisi kasir</span>`}
-                        </td>
-                        <td class="py-3 px-3.5">
-                            ${getStatusBadge(r)}
-                            ${r.SPV_Verifikator_Nama ? `<div class="text-[10px] text-slate-500 mt-1">SPV: <strong>${r.SPV_Verifikator_Nama}</strong> (${r.Waktu_Verifikasi_SPV || ""})</div>` : ""}
-                            ${r.Catatan_SPV ? `<div class="text-[10px] text-slate-600 italic mt-0.5">"${r.Catatan_SPV}"</div>` : ""}
-                            ${sigImg}
-                        </td>
-                        <td class="py-3 px-3.5 whitespace-nowrap">${buildRowActionsHtml(r)}</td>
-                    </tr>
-                `;
-            }).join("");
-
-            cards.innerHTML = rows.map(r => {
-                const sigImg = r.Paraf_TTD_Digital_SPV
-                    ? `<img src="${r.Paraf_TTD_Digital_SPV}" alt="Paraf SPV" class="h-9 w-24 object-contain border border-slate-200 rounded bg-white p-0.5">`
-                    : "";
-
-                return `
-                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
-                        <div class="flex items-start justify-between gap-2">
-                            <div>
-                                <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">${r.RegNum || "POS"} • ${r.TrxDate || ""} ${r.TrxTime || ""}</span>
-                                <div class="font-mono font-extrabold text-xs text-slate-900 mt-1.5">Trx: ${r.TRXNUM || "-"} | SKU: ${r.SKU || "-"}</div>
-                                <div class="text-xs text-slate-600">${r.Description || "-"}</div>
-                            </div>
-                            <div class="text-right shrink-0">
-                                <div class="text-xs font-extrabold text-slate-900">${formatRupiah(r.Amount)}</div>
-                                <div class="mt-1">${getStatusBadge(r)}</div>
-                            </div>
+            cards.innerHTML = rows.map(r => `
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">${r.RegNum || "POS"} • ${r.TrxDate || ""} ${r.TrxTime || ""}</span>
+                            <div class="font-mono font-extrabold text-xs text-slate-900 mt-1.5">Trx: ${r.TRXNUM || "-"} | SKU: ${r.SKU || "-"}</div>
+                            <div class="text-xs text-slate-600">${r.Description || "-"}</div>
                         </div>
-
-                        <div class="flex justify-between text-[11px] bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-                            <span>CashNum: <strong class="font-mono">${r.CashNum || "-"}</strong></span>
-                            <span>AuthID: <strong class="font-mono text-indigo-700">${r.AuthID || "-"}</strong></span>
-                        </div>
-
-                        <div class="text-xs">
-                            <span class="font-bold text-slate-700 block mb-0.5">Remarks_Kasir:</span>
-                            ${(r.Remarks_Kasir || "").trim()
-                                ? `<div class="p-2 rounded-lg bg-indigo-50/40 border border-indigo-100 text-slate-800">${r.Remarks_Kasir}</div>`
-                                : `<span class="text-amber-600 italic text-[11px]">Belum diisi kasir</span>`}
-                        </div>
-
-                        ${(r.SPV_Verifikator_Nama || r.Catatan_SPV || r.Paraf_TTD_Digital_SPV) ? `
-                            <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]">
-                                <div>
-                                    ${r.SPV_Verifikator_Nama ? `<div class="font-bold text-slate-700">${r.SPV_Verifikator_Nama}</div>` : ""}
-                                    ${r.Catatan_SPV ? `<div class="text-slate-500 italic">"${r.Catatan_SPV}"</div>` : ""}
-                                </div>
-                                ${sigImg}
-                            </div>
-                        ` : ""}
-
-                        <div class="pt-2 border-t border-slate-100">
-                            ${buildRowActionsHtml(r)}
+                        <div class="text-right shrink-0">
+                            <div class="text-xs font-extrabold text-slate-900">${formatRupiah(r.Amount)}</div>
+                            <div class="mt-1">${getStatusBadge(r)}</div>
                         </div>
                     </div>
-                `;
-            }).join("");
+
+                    <div class="flex justify-between text-[11px] bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                        <span>CashNum: <strong class="font-mono">${r.CashNum || "-"}</strong></span>
+                        <span>AuthID: <strong class="font-mono text-indigo-700">${r.AuthID || "-"}</strong></span>
+                    </div>
+
+                    <div class="text-xs">
+                        <span class="font-bold text-slate-700 block mb-0.5">Remarks_Kasir:</span>
+                        ${(r.Remarks_Kasir || "").trim()
+                            ? `<div class="p-2 rounded-lg bg-indigo-50/40 border border-indigo-100 text-slate-800">${r.Remarks_Kasir}</div>`
+                            : `<span class="text-amber-600 italic text-[11px]">Belum diisi kasir</span>`}
+                    </div>
+
+                    ${(r.SPV_Verifikator_Nama || r.Catatan_SPV || r.Paraf_TTD_Digital_SPV) ? `
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]">
+                            <div>
+                                ${r.SPV_Verifikator_Nama ? `<div class="font-bold text-slate-700">${r.SPV_Verifikator_Nama}</div>` : ""}
+                                ${r.Catatan_SPV ? `<div class="text-slate-500 italic">"${r.Catatan_SPV}"</div>` : ""}
+                            </div>
+                            <div>${renderSignatureDisplay(r.Paraf_TTD_Digital_SPV)}</div>
+                        </div>
+                    ` : ""}
+
+                    <div class="pt-2 border-t border-slate-100">
+                        ${buildRowActionsHtml(r)}
+                    </div>
+                </div>
+            `).join("");
         }
 
         // =====================================================
-        // 6. MODAL & AKSI REMARKS KASIR
+        // 7. MODAL & AKSI REMARKS KASIR
         // =====================================================
         function openRemarksModal(sheetName, trxId) {
             const row = (db.sheets[sheetName] || []).find(r => r.id === trxId);
             if (!row) return;
-            activeActionTarget = { sheetName, trxId };
 
+            const status = String(row.Status_Verifikasi_SPV || "PENDING").toUpperCase();
+            if (currentUser.Role === "KASIR / SA" && (status === "APPROVED" || status === "REJECTED")) {
+                showToast("Transaksi sudah diverifikasi SPV, remarks tidak dapat diubah.", "error");
+                return;
+            }
+
+            activeActionTarget = { sheetName, trxId };
             document.getElementById("remarks-detail-box").innerHTML = `
                 <div><strong>Sheet:</strong> ${sheetName} • <strong>Trx:</strong> ${row.TRXNUM} • <strong>SKU:</strong> ${row.SKU}</div>
                 <div><strong>Item:</strong> ${row.Description} (${formatRupiah(row.Amount)})</div>
@@ -1118,22 +1282,26 @@
             const row = (db.sheets[sheetName] || []).find(r => r.id === trxId);
             if (!row) return;
 
-            const waktu = nowString();
+            const res = await callGasApi({
+                action: "saveRemarks",
+                sheetName,
+                rowIndex: row._rowIndex,
+                trxId: row.id,
+                remarks: text,
+                actorId: currentUser.User_ID
+            });
+
+            if (!res.ok) {
+                showToast("Gagal menyimpan remarks ke Google Sheets.", "error");
+                return;
+            }
+
+            const waktu = (res.data && res.data.waktuRemarks) ? res.data.waktuRemarks : nowString();
             row.Remarks_Kasir = text;
             row.Waktu_Remarks_Kasir = waktu;
             if (!row.Status_Verifikasi_SPV) row.Status_Verifikasi_SPV = "PENDING";
 
             saveDb();
-            await postToAppsScript({
-                action: "saveRemarks",
-                sheetName,
-                trxId,
-                CashNum: row.CashNum,
-                Remarks_Kasir: text,
-                Waktu_Remarks_Kasir: waktu,
-                actorId: currentUser.User_ID
-            });
-
             closeRemarksModal();
             renderTabs();
             renderSheetView();
@@ -1141,7 +1309,7 @@
         }
 
         // =====================================================
-        // 7. MODAL & AKSI VERIFIKASI + PARAF DIGITAL SPV
+        // 8. MODAL & AKSI VERIFIKASI + PARAF DIGITAL SPV
         // =====================================================
         let canvasEl = null;
         let ctxEl = null;
@@ -1271,29 +1439,35 @@
             const chosen = document.querySelector('input[name="spvStatus"]:checked')?.value || "APPROVED";
             const note = document.getElementById("spv-note").value.trim();
             const sigDataUrl = canvasEl.toDataURL("image/png");
-            const waktu = nowString();
+
+            const res = await callGasApi({
+                action: "saveVerification",
+                sheetName: activeActionTarget.sheetName,
+                rowIndex: row._rowIndex,
+                trxId: row.id,
+                status: chosen,
+                catatanSpv: note,
+                signatureBase64: sigDataUrl,
+                spvId: currentUser.User_ID,
+                spvName: currentUser.Nama_Lengkap
+            });
+
+            if (!res.ok) {
+                showToast("Gagal menyimpan verifikasi ke Google Sheets.", "error");
+                return;
+            }
+
+            const waktu = (res.data && res.data.waktuVerifikasi) ? res.data.waktuVerifikasi : nowString();
+            const parafRef = (res.data && res.data.parafRef) ? res.data.parafRef : sigDataUrl;
 
             row.Status_Verifikasi_SPV = chosen;
             row.SPV_Verifikator_ID = currentUser.User_ID;
             row.SPV_Verifikator_Nama = currentUser.Nama_Lengkap;
             row.Catatan_SPV = note;
-            row.Paraf_TTD_Digital_SPV = sigDataUrl;
+            row.Paraf_TTD_Digital_SPV = parafRef;
             row.Waktu_Verifikasi_SPV = waktu;
 
             saveDb();
-            await postToAppsScript({
-                action: "saveVerification",
-                sheetName: activeActionTarget.sheetName,
-                trxId: row.id,
-                AuthID: row.AuthID,
-                status: chosen,
-                spvId: currentUser.User_ID,
-                spvName: currentUser.Nama_Lengkap,
-                catatanSpv: note,
-                signatureBase64: sigDataUrl,
-                waktuVerifikasi: waktu
-            });
-
             closeVerifyModal();
             renderTabs();
             renderSheetView();
@@ -1301,7 +1475,7 @@
         }
 
         // =====================================================
-        // 8. UPLOAD EXCEL HARIAN (ANTI DUPLIKAT) & EXPORT .XLSX
+        // 9. UPLOAD EXCEL HARIAN (ANTI DUPLIKAT) & EXPORT .XLSX
         // =====================================================
         function openUploadModal() {
             if (currentUser?.Role !== "ADMIN") return;
@@ -1329,7 +1503,13 @@
             if (sheetName === "Void-Bill Cancelation") {
                 return `${sheetName}|${dt}|${tm}|${reg}|${sku}|${cash}|${desc}`;
             }
-            return `${sheetName}|${dt}|${tm}|${reg}|${trx}|${sku}|${cash}`;
+            if (sheetName === "Unmatch Transaksi") {
+                return `${sheetName}|${dt}|${tm}|${reg}|${sku}|${cash}`;
+            }
+            if (sheetName === "Parked Invoice" || sheetName === "Print Duplicate") {
+                return `${sheetName}|${dt}|${tm}|${trx}|${cash}`;
+            }
+            return `${sheetName}|${dt}|${tm}|${trx}|${sku}|${cash}`;
         }
 
         function processExcelUpload(event) {
@@ -1343,9 +1523,9 @@
                     const bytes = new Uint8Array(ev.target.result);
                     const wb = XLSX.read(bytes, { type: "array" });
 
-                    let grandAdded = 0;
-                    let grandRejected = 0;
-                    const batchToSync = {};
+                    const sheetsPayload = {};
+                    let localAdded = 0;
+                    let localRejected = 0;
                     const itemsHtml = [];
 
                     for (const sheetName of TRANSACTION_SHEETS) {
@@ -1366,20 +1546,20 @@
                         const existingKeys = new Set(db.sheets[sheetName].map(r => buildRowUniqueKey(sheetName, r)));
                         let added = 0;
                         let rejected = 0;
-                        const sheetAddedList = [];
+                        const sheetRowsToSend = [];
 
                         rawRows.forEach((raw, idx) => {
                             const rec = {
                                 id: `${sheetName.slice(0, 2).toUpperCase()}-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
                                 TrxDate: String(raw.TrxDate || raw.TRXDATE || raw.Date || "").trim(),
-                                TrxTime: String(raw.TrxTime || raw.CreateTime || raw.Time || "").trim(),
-                                RegNum: String(raw.RegNum || raw.REGNUM || raw.POS || "POS-01").trim(),
-                                TRXNUM: String(raw.TRXNUM || raw.TrxNum || raw.Invoice || "").trim(),
+                                TrxTime: String(raw.TrxTime || raw.CreateTime || raw.TimeOfParking || raw.Time || "").trim(),
+                                RegNum: String(raw.RegNum || raw.REGNUM || raw.StoreCounter || raw.POS || "POS-01").trim(),
+                                TRXNUM: String(raw.TRXNUM || raw.TrxNum || raw.ParkedInvoiceNumber || raw.Invoice || "").trim(),
                                 SKU: String(raw.SKU || "").trim(),
                                 Description: String(raw.Description || raw.Item || raw.Keterangan || "").trim(),
                                 Amount: Number(String(raw.Amount || raw.Total || raw.Nominal || 0).replace(/[^0-9.-]/g, "")) || 0,
-                                CashNum: String(raw.CashNum || raw.CashierID || "").trim(),
-                                AuthID: String(raw.AuthID || raw.SPV_ID || "").trim(),
+                                CashNum: String(raw.CashNum || raw["Cash Num"] || raw["Cashier Name and ID"] || raw.CashierID || "").trim(),
+                                AuthID: String(raw.AuthID || raw.AuthId || raw.SPV_ID || "").trim(),
                                 Remarks_Kasir: String(raw.Remarks_Kasir || "").trim(),
                                 Waktu_Remarks_Kasir: String(raw.Waktu_Remarks_Kasir || "").trim(),
                                 Status_Verifikasi_SPV: String(raw.Status_Verifikasi_SPV || "PENDING").trim() || "PENDING",
@@ -1392,23 +1572,41 @@
 
                             if (!rec.CashNum && !rec.TRXNUM && !rec.SKU && !rec.Description) return;
 
+                            // Sertakan juga kolom asli agar pemetaan Apps Script tetap cocok
+                            const serverObj = {
+                                ...raw,
+                                ...rec,
+                                TRXDATE: rec.TrxDate,
+                                TrxDate: rec.TrxDate,
+                                TrxTime: rec.TrxTime,
+                                REGNUM: rec.RegNum,
+                                RegNum: rec.RegNum,
+                                TRXNUM: rec.TRXNUM,
+                                TrxNum: rec.TRXNUM,
+                                SKU: rec.SKU,
+                                Description: rec.Description,
+                                Amount: rec.Amount,
+                                CashNum: rec.CashNum,
+                                AuthID: rec.AuthID
+                            };
+                            sheetRowsToSend.push(serverObj);
+
                             const key = buildRowUniqueKey(sheetName, rec);
                             if (existingKeys.has(key)) {
                                 rejected++;
                             } else {
                                 existingKeys.add(key);
                                 db.sheets[sheetName].unshift(rec);
-                                sheetAddedList.push(rec);
                                 added++;
                             }
                         });
 
-                        batchToSync[sheetName] = sheetAddedList;
-                        grandAdded += added;
-                        grandRejected += rejected;
+                        sheetsPayload[sheetName] = sheetRowsToSend;
+                        localAdded += added;
+                        localRejected += rejected;
 
                         itemsHtml.push(`
-                            <div class="p-3 flex flex-wrap items-center justify-between gap-2">
+                            <div class="p-3 flex flex-wrap items-center justify-between gap-2" data-sheet-stat="${sheetName}">
                                 <span class="font-bold text-slate-800">${sheetName}</span>
                                 <div class="flex items-center gap-2">
                                     <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Added: ${added}</span>
@@ -1419,18 +1617,41 @@
                     }
 
                     saveDb();
-                    await postToAppsScript({ action: "uploadDailyExcel", sheetsData: batchToSync });
+                    const res = await callGasApi({ action: "uploadDailyExcel", sheetsData: sheetsPayload });
+
+                    if (!res.simulated && res.ok && res.data && res.data.detailPerSheet) {
+                        localAdded = res.data.totalAdded ?? localAdded;
+                        localRejected = res.data.totalRejectedDuplicate ?? localRejected;
+
+                        const serverItemsHtml = TRANSACTION_SHEETS.map(sName => {
+                            const info = res.data.detailPerSheet[sName];
+                            if (!info) {
+                                return `<div class="p-3 flex items-center justify-between bg-slate-50"><span class="font-bold text-slate-600">${sName}</span><span class="text-slate-400 italic">Tidak ada baris</span></div>`;
+                            }
+                            return `
+                                <div class="p-3 flex flex-wrap items-center justify-between gap-2">
+                                    <span class="font-bold text-slate-800">${sName}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Added: ${info.added}</span>
+                                        <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">Rejected Duplicate: ${info.rejectedDuplicate}</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        document.getElementById("upload-per-sheet-list").innerHTML = serverItemsHtml.join("");
+                        await refreshAllData(false);
+                    } else {
+                        document.getElementById("upload-per-sheet-list").innerHTML = itemsHtml.join("");
+                        renderTabs();
+                        renderSheetView();
+                    }
 
                     document.getElementById("upload-totals-banner").innerHTML = `
-                        <span>Total Masuk: +${grandAdded} baris</span>
-                        <span>Total Duplikat Ditolak: ${grandRejected} baris</span>
+                        <span>Total Masuk: +${localAdded} baris</span>
+                        <span>Total Duplikat Ditolak: ${localRejected} baris</span>
                     `;
-                    document.getElementById("upload-per-sheet-list").innerHTML = itemsHtml.join("");
                     document.getElementById("upload-summary-wrap").classList.remove("hidden");
-
-                    renderTabs();
-                    renderSheetView();
-                    showToast(`Upload selesai: +${grandAdded} masuk, ${grandRejected} duplikat ditolak.`, "success");
+                    showToast(`Upload selesai: +${localAdded} masuk, ${localRejected} duplikat ditolak.`, "success");
                 } catch (err) {
                     console.error(err);
                     showToast("Gagal memproses file Excel.", "error");
@@ -1461,7 +1682,7 @@
                     SPV_Verifikator_Nama: r.SPV_Verifikator_Nama,
                     Catatan_SPV: r.Catatan_SPV,
                     Waktu_Verifikasi_SPV: r.Waktu_Verifikasi_SPV,
-                    Paraf_TTD_Digital_SPV: r.Paraf_TTD_Digital_SPV ? "TERLAMPIR" : ""
+                    Paraf_TTD_Digital_SPV: r.Paraf_TTD_Digital_SPV || ""
                 }));
                 const ws = XLSX.utils.json_to_sheet(rows);
                 XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
@@ -1475,7 +1696,7 @@
         }
 
         // =====================================================
-        // 9. MASTER USER (ADMIN)
+        // 10. MASTER USER (ADMIN)
         // =====================================================
         function renderUsersTable() {
             const tbody = document.getElementById("users-tbody");
@@ -1507,7 +1728,7 @@
             const idField = document.getElementById("form-user-id");
 
             if (existingId) {
-                const u = db.users.find(x => x.User_ID === existingId);
+                const u = db.users.find(x => normalizeId(x.User_ID) === normalizeId(existingId));
                 if (!u) return;
                 document.getElementById("user-modal-title").textContent = "Edit User";
                 origInput.value = u.User_ID;
@@ -1546,15 +1767,29 @@
             const pin = document.getElementById("form-user-pin").value.trim() || "123456";
             const status = document.getElementById("form-user-status").value;
 
+            const res = await callGasApi({
+                action: "saveUser",
+                userId: uid,
+                nama,
+                role,
+                pin,
+                status
+            });
+
+            if (!res.ok) {
+                showToast("Gagal menyimpan user ke Google Sheets.", "error");
+                return;
+            }
+
             if (!origId) {
-                const dup = db.users.some(x => normalizeId(x.User_ID) === normalizeId(uid));
-                if (dup) {
-                    showToast("User_ID sudah ada.", "error");
-                    return;
+                const existingIdx = db.users.findIndex(x => normalizeId(x.User_ID) === normalizeId(uid));
+                if (existingIdx !== -1) {
+                    db.users[existingIdx] = { User_ID: uid, Nama_Lengkap: nama, Role: role, PIN_Password: pin, Status_Aktif: status };
+                } else {
+                    db.users.push({ User_ID: uid, Nama_Lengkap: nama, Role: role, PIN_Password: pin, Status_Aktif: status });
                 }
-                db.users.push({ User_ID: uid, Nama_Lengkap: nama, Role: role, PIN_Password: pin, Status_Aktif: status });
             } else {
-                const target = db.users.find(x => x.User_ID === origId);
+                const target = db.users.find(x => normalizeId(x.User_ID) === normalizeId(origId));
                 if (target) {
                     target.Nama_Lengkap = nama;
                     target.Role = role;
@@ -1564,19 +1799,18 @@
             }
 
             saveDb();
-            await postToAppsScript({ action: "saveUser", userId: uid, nama, role, pin, status });
-
             closeUserModal();
             renderTabs();
             renderUsersTable();
-            showToast("Master User disimpan.", "success");
+            showToast("Master User berhasil disimpan.", "success");
         }
 
         // =====================================================
-        // 10. MODAL PENGATURAN & INISIALISASI
+        // 11. PENGATURAN & INISIALISASI
         // =====================================================
         function openConfigModal() {
             document.getElementById("gas-url-input").value = getGasUrl();
+            document.getElementById("sim-mode-toggle").checked = isSimulationMode();
             document.getElementById("config-modal").classList.remove("hidden");
             document.getElementById("config-modal").classList.add("flex");
         }
@@ -1586,22 +1820,40 @@
             document.getElementById("config-modal").classList.remove("flex");
         }
 
+        function restoreDefaultGasUrl() {
+            document.getElementById("gas-url-input").value = DEFAULT_GAS_URL;
+            document.getElementById("sim-mode-toggle").checked = false;
+            showToast("URL Web App bawaan diisi. Klik Simpan Pengaturan.", "info");
+        }
+
         async function saveGasConfig(e) {
             e.preventDefault();
             const url = document.getElementById("gas-url-input").value.trim();
+            const manualSim = document.getElementById("sim-mode-toggle").checked;
+
             localStorage.setItem(KEY_GAS_URL, url);
-            updateConnectionStatus(null);
+            // Mode Simulasi Lokal otomatis OFF saat URL terisi, kecuali user mengaktifkannya secara manual
+            if (!url) {
+                setSimulationMode(true);
+            } else {
+                setSimulationMode(manualSim);
+            }
+
+            hideConnectionError();
+            updateConnectionBadge();
             closeConfigModal();
-            showToast(url ? "URL Apps Script disimpan." : "Kembali ke Mode Simulasi Lokal.", "success");
-            if (url && currentUser) {
-                await syncFromGas(true);
+
+            if (!isSimulationMode()) {
+                await refreshAllData(true);
+            } else {
+                showToast("Mode Simulasi Lokal aktif.", "info");
             }
         }
 
         function resetLocalDemoData() {
             askConfirm(
                 "Reset Data Simulasi Lokal",
-                "Data transaksi dan user di penyimpanan lokal browser akan dikembalikan ke data awal Store 312. Lanjutkan?",
+                "Data transaksi dan user di penyimpanan lokal browser akan dikembalikan ke data contoh awal Store 312. Lanjutkan?",
                 () => {
                     db = createDefaultDb();
                     saveDb(db);
@@ -1615,9 +1867,14 @@
             );
         }
 
-        window.addEventListener("DOMContentLoaded", () => {
+        window.addEventListener("DOMContentLoaded", async () => {
             initSignaturePad();
-            updateConnectionStatus(null);
+            // Pastikan URL default langsung aktif dan mode simulasi otomatis OFF saat pertama kali dibuka
+            const currentUrl = getGasUrl();
+            if (currentUrl && localStorage.getItem(KEY_SIM_MODE) === null) {
+                setSimulationMode(false);
+            }
+            updateConnectionBadge();
 
             try {
                 const savedSess = localStorage.getItem(KEY_SESSION);
@@ -1631,6 +1888,10 @@
                 }
             } catch (e) {
                 console.error(e);
+            }
+
+            if (!isSimulationMode()) {
+                await refreshAllData(false);
             }
         });
     </script>
