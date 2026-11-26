@@ -145,8 +145,9 @@
                         class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                 </div>
 
-                <button type="submit" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-sm shadow-sm transition">
-                    Masuk ke Workspace
+                <button type="submit" id="btn-login-submit" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-sm shadow-sm transition flex items-center justify-center gap-2">
+                    <span id="login-spinner" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span id="login-btn-text">Masuk ke Workspace</span>
                 </button>
             </form>
 
@@ -248,8 +249,8 @@
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-600">
                                 <th class="py-3 px-3.5">Tanggal / Jam / POS</th>
-                                <th class="py-3 px-3.5">No Trx / SKU / Item</th>
-                                <th class="py-3 px-3.5 text-right">Nominal</th>
+                                <th class="py-3 px-3.5">No Trx & Rincian SKU / Item</th>
+                                <th class="py-3 px-3.5 text-right">Price / Amount / Disc / Net</th>
                                 <th class="py-3 px-3.5">CashNum / AuthID</th>
                                 <th class="py-3 px-3.5">Remarks_Kasir</th>
                                 <th class="py-3 px-3.5">Status, Catatan & Paraf SPV</th>
@@ -608,6 +609,62 @@
             return "Rp " + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         }
 
+        function parseCurrencyNumber(val) {
+            if (val === null || val === undefined || val === "") return 0;
+            if (typeof val === "number") return isNaN(val) ? 0 : val;
+            let s = String(val).trim();
+            // Tangani format angka dengan titik ribuan atau koma desimal
+            s = s.replace(/[^0-9,.-]/g, "");
+            if (!s) return 0;
+            if (s.includes(".") && s.includes(",")) {
+                s = s.replace(/\./g, "").replace(",", ".");
+            } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+                s = s.replace(/\./g, "");
+            } else if (s.includes(",")) {
+                s = s.replace(",", ".");
+            }
+            const parsed = parseFloat(s);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function getFieldCI(obj, candidates) {
+            if (!obj || typeof obj !== "object") return "";
+            const keys = Object.keys(obj);
+            for (const cand of candidates) {
+                const target = cand.toLowerCase().replace(/[^a-z0-9]/g, "");
+                for (const k of keys) {
+                    const normK = k.toLowerCase().replace(/[^a-z0-9]/g, "");
+                    if (normK === target && obj[k] !== "" && obj[k] !== null && obj[k] !== undefined) {
+                        return obj[k];
+                    }
+                }
+            }
+            return "";
+        }
+
+        function formatExcelDate(val) {
+            if (val === null || val === undefined || val === "") return "";
+            if (typeof val === "number" && val > 20000 && val < 90000) {
+                const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+                const p = n => String(n).padStart(2, "0");
+                return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
+            }
+            return String(val).trim();
+        }
+
+        function formatExcelTime(val) {
+            if (val === null || val === undefined || val === "") return "";
+            if (typeof val === "number" && val >= 0 && val < 1) {
+                const totalSec = Math.round(val * 86400);
+                const h = Math.floor(totalSec / 3600);
+                const m = Math.floor((totalSec % 3600) / 60);
+                const s = totalSec % 60;
+                const p = n => String(n).padStart(2, "0");
+                return `${p(h)}:${p(m)}:${p(s)}`;
+            }
+            return String(val).trim();
+        }
+
         // =====================================================
         // 2. DATA CONTOH / CADANGAN LOKAL STORE 312
         // =====================================================
@@ -625,7 +682,8 @@
                         {
                             id: "UM-1", TrxDate: "2026-11-27", TrxTime: "09:15:10", RegNum: "POS-01",
                             TRXNUM: "TRX-90011", SKU: "8991100201", Description: "Kemeja Formal Lengan Panjang",
-                            Amount: 259000, CashNum: "221521", AuthID: "119710",
+                            Price: 259000, Amount: 259000, Disc: 0, NetAmount: 259000,
+                            CashNum: "221521", AuthID: "119710",
                             Remarks_Kasir: "", Waktu_Remarks_Kasir: "",
                             Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
                             Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
@@ -633,7 +691,8 @@
                         {
                             id: "UM-2", TrxDate: "2026-11-27", TrxTime: "10:42:05", RegNum: "POS-02",
                             TRXNUM: "TRX-90045", SKU: "8994400812", Description: "Tas Ransel Kanvas Hitam",
-                            Amount: 319000, CashNum: "221521", AuthID: "119710",
+                            Price: 350000, Amount: 350000, Disc: 31000, NetAmount: 319000,
+                            CashNum: "221521", AuthID: "119710",
                             Remarks_Kasir: "Jaringan EDC sempat timeout, transaksi sukses di percobaan kedua.",
                             Waktu_Remarks_Kasir: "2026-11-27 11:00:00",
                             Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
@@ -644,7 +703,8 @@
                         {
                             id: "PK-1", TrxDate: "2026-11-27", TrxTime: "11:12:30", RegNum: "POS-01",
                             TRXNUM: "PRK-201", SKU: "8992200310", Description: "Gamis Motif M",
-                            Amount: 369000, CashNum: "221521", AuthID: "119710",
+                            Price: 369000, Amount: 369000, Disc: 0, NetAmount: 369000,
+                            CashNum: "221521", AuthID: "119710",
                             Remarks_Kasir: "", Waktu_Remarks_Kasir: "",
                             Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
                             Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
@@ -665,47 +725,51 @@
         let activeTab = TRANSACTION_SHEETS[0];
         let activeActionTarget = null;
         let hasSigDrawn = false;
+        let activeSyncPromise = null;
 
         function loadDb() {
             try {
                 const raw = localStorage.getItem(KEY_DB);
                 if (raw) {
                     const parsed = JSON.parse(raw);
-                    if (parsed && parsed.users && parsed.sheets) return parsed;
+                    if (parsed && Array.isArray(parsed.users) && parsed.sheets && typeof parsed.sheets === "object") {
+                        TRANSACTION_SHEETS.forEach(s => {
+                            if (!Array.isArray(parsed.sheets[s])) parsed.sheets[s] = [];
+                        });
+                        return parsed;
+                    }
                 }
             } catch (e) {
-                console.error(e);
+                console.error("Gagal memuat DB lokal:", e);
             }
-            const fresh = createDefaultDb();
-            saveDb(fresh);
-            return fresh;
+            const initial = createDefaultDb();
+            saveDb(initial);
+            return initial;
         }
 
-        function saveDb(obj = db) {
+        function saveDb(dataObj = db) {
             try {
-                localStorage.setItem(KEY_DB, JSON.stringify(obj));
+                localStorage.setItem(KEY_DB, JSON.stringify(dataObj));
             } catch (e) {
-                showToast("Gagal menyimpan ke penyimpanan browser.", "error");
+                showToast("Gagal menyimpan data ke penyimpanan lokal.", "error");
             }
         }
 
         function getGasUrl() {
-            const saved = localStorage.getItem(KEY_GAS_URL);
-            if (saved === null) {
-                localStorage.setItem(KEY_GAS_URL, DEFAULT_GAS_URL);
-                return DEFAULT_GAS_URL;
-            }
-            return saved.trim();
+            const stored = localStorage.getItem(KEY_GAS_URL);
+            if (stored === null) return DEFAULT_GAS_URL;
+            return String(stored).trim();
         }
 
         function isSimulationMode() {
             const url = getGasUrl();
             if (!url) return true;
-            return localStorage.getItem(KEY_SIM_MODE) === "true";
+            const flag = localStorage.getItem(KEY_SIM_MODE);
+            return flag === "true";
         }
 
-        function setSimulationMode(val) {
-            localStorage.setItem(KEY_SIM_MODE, val ? "true" : "false");
+        function setSimulationMode(enabled) {
+            localStorage.setItem(KEY_SIM_MODE, enabled ? "true" : "false");
         }
 
         function updateConnectionBadge() {
@@ -722,9 +786,18 @@
 
         function showConnectionError(detailText) {
             const banner = document.getElementById("conn-error-banner");
-            const detail = document.getElementById("conn-error-detail");
-            if (detail && detailText) detail.textContent = detailText;
-            if (banner) banner.classList.remove("hidden");
+            const detailEl = document.getElementById("conn-error-detail");
+            if (detailEl && detailText) {
+                detailEl.textContent = detailText;
+            }
+            if (banner) {
+                banner.classList.remove("hidden");
+            }
+            const badge = document.getElementById("conn-status-badge");
+            if (badge && !isSimulationMode()) {
+                badge.textContent = "Gangguan Koneksi Sheets";
+                badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200";
+            }
         }
 
         function hideConnectionError() {
@@ -763,7 +836,7 @@
         // =====================================================
         // 3. KOMUNIKASI BACKEND GOOGLE APPS SCRIPT (FETCH POST)
         // =====================================================
-        async function callGasApi(payload) {
+        async function callGasApi(payload, timeoutMs = 15000) {
             if (isSimulationMode()) {
                 return { simulated: true, ok: true };
             }
@@ -774,12 +847,17 @@
                 return { simulated: true, ok: true };
             }
 
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+
             try {
                 const resp = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
                 });
+                clearTimeout(timer);
                 if (!resp.ok) {
                     throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
                 }
@@ -791,23 +869,35 @@
                 updateConnectionBadge();
                 return { simulated: false, ok: true, data: json };
             } catch (err) {
-                const msg = err && err.message ? err.message : "Tidak dapat menjangkau server Apps Script.";
+                clearTimeout(timer);
+                const msg = err && err.name === "AbortError"
+                    ? "Koneksi timeout (server lambat merespons)"
+                    : (err && err.message ? err.message : "Tidak dapat menjangkau server Apps Script.");
                 showConnectionError(`${msg}. Pastikan Web App sudah di-deploy dengan akses 'Anyone'.`);
                 return { simulated: false, ok: false, error: msg };
             }
         }
 
         function normalizeServerRow(sheetName, raw, idx) {
-            const trxNum = raw.TRXNUM ?? raw.TrxNum ?? raw.ParkedInvoiceNumber ?? raw.Invoice ?? "";
-            const trxDate = raw.TrxDate ?? raw.TRXDATE ?? raw.Date ?? "";
-            const trxTime = raw.TrxTime ?? raw.CreateTime ?? raw.TimeOfParking ?? "";
-            const regNum = raw.RegNum ?? raw.REGNUM ?? raw.StoreCounter ?? "POS-01";
-            const sku = raw.SKU ?? "";
-            const desc = raw.Description ?? raw.Item ?? raw.Keterangan ?? "-";
-            const amtRaw = raw.Amount ?? raw.Total ?? raw.Nominal ?? 0;
-            const amount = Number(String(amtRaw).replace(/[^0-9.-]/g, "")) || 0;
-            const cashNum = raw.CashNum ?? raw["Cash Num"] ?? raw["Cashier Name and ID"] ?? "";
-            const authId = raw.AuthID ?? raw.AuthId ?? "";
+            const trxNum = getFieldCI(raw, ["TRXNUM", "TrxNum", "Trx_Num", "NoTrx", "No_Trx", "ParkedInvoiceNumber", "Parked_Invoice", "Invoice", "ReceiptNo", "BillNo"]);
+            const trxDate = formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Trx_Date", "Date", "Tanggal", "Tgl", "BusinessDate"]));
+            const trxTime = formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Trx_Time", "CreateTime", "TimeOfParking", "Time", "Jam", "Waktu"]));
+            const regNum = getFieldCI(raw, ["RegNum", "REGNUM", "Reg_Num", "StoreCounter", "POS", "Terminal", "Register", "Kassa"]) || "POS-01";
+            const sku = getFieldCI(raw, ["SKU", "SkuCode", "ItemCode", "Plu", "PLU", "Barcode", "Article", "KodeBarang"]);
+            const desc = getFieldCI(raw, ["Description", "ItemDescription", "Item_Name", "ItemName", "Item", "ProductName", "NamaBarang", "Keterangan", "Reason"]) || "-";
+            const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY", "Quantity", "Jumlah"])) || 1;
+
+            const priceVal = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price", "UnitPrice", "Harga", "HargaSatuan", "NormalPrice"]));
+            const amountVal = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT", "GrossAmount", "Total", "SubTotal", "Subtotal"]));
+            const discVal = parseCurrencyNumber(getFieldCI(raw, ["Disc", "DISC", "Discount", "Diskon", "DiscAmount", "Potongan"]));
+            const netVal = parseCurrencyNumber(getFieldCI(raw, ["NetAmount", "NETAMOUNT", "Net_Amount", "NetSales", "Net", "NetTotal", "FinalAmount"]));
+
+            const finalAmount = amountVal || (priceVal * qty) || netVal || 0;
+            const finalPrice = priceVal || (qty ? finalAmount / qty : finalAmount);
+            const finalNet = netVal || Math.max(0, finalAmount - discVal);
+
+            const cashNum = getFieldCI(raw, ["CashNum", "CASHNUM", "Cash_Num", "CashierID", "Cashier_ID", "Cashier", "CashierNameandID", "Kasir", "UserID", "StaffID"]);
+            const authId = getFieldCI(raw, ["AuthID", "AUTHID", "Auth_ID", "SupervisorID", "SPV_ID", "SPV", "ApproverID", "VoidAuthID"]);
 
             return {
                 id: raw.id || `${sheetName}-R${raw._rowIndex || idx}`,
@@ -818,7 +908,11 @@
                 TRXNUM: String(trxNum).trim(),
                 SKU: String(sku).trim(),
                 Description: String(desc).trim(),
-                Amount: amount,
+                Qty: qty,
+                Price: finalPrice,
+                Amount: finalAmount,
+                Disc: discVal,
+                NetAmount: finalNet,
                 CashNum: String(cashNum).trim(),
                 AuthID: String(authId).trim(),
                 Remarks_Kasir: String(raw.Remarks_Kasir || "").trim(),
@@ -837,61 +931,71 @@
                 if (notify) showToast("Mode Simulasi Lokal aktif (data tersimpan di browser).", "info");
                 return;
             }
+            if (activeSyncPromise) return activeSyncPromise;
 
             const spinner = document.getElementById("refresh-spinner");
             if (spinner) spinner.classList.remove("hidden");
 
-            try {
-                // 1. Ambil Master User & ringkasan awal
-                const initRes = await callGasApi({
-                    action: "getInitialData",
-                    role: currentUser ? currentUser.Role : "",
-                    userId: currentUser ? currentUser.User_ID : ""
-                });
+            activeSyncPromise = (async () => {
+                try {
+                    const initRes = await callGasApi({
+                        action: "getInitialData",
+                        role: currentUser ? currentUser.Role : "",
+                        userId: currentUser ? currentUser.User_ID : ""
+                    }, 12000);
 
-                if (!initRes.ok) {
-                    if (notify) showToast("Gagal memuat data dari Google Sheets.", "error");
-                    return;
+                    if (!initRes.ok) {
+                        if (notify) showToast("Gagal memuat data dari Google Sheets.", "error");
+                        return;
+                    }
+
+                    if (initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
+                        db.users = initRes.data.users.map(u => ({
+                            User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
+                            Nama_Lengkap: String(u.nama ?? u.Nama_Lengkap ?? "").trim(),
+                            Role: String(u.role ?? u.Role ?? "KASIR / SA").trim().toUpperCase(),
+                            PIN_Password: String(u.pin ?? u.PIN_Password ?? "123456").trim(),
+                            Status_Aktif: String(u.status ?? u.Status_Aktif ?? "AKTIF").trim().toUpperCase()
+                        }));
+                    }
+
+                    if (currentUser) {
+                        // Prioritaskan sheet yang sedang dibuka agar tampil instan, lalu tarik sisa sheet
+                        const orderedSheets = [activeTab, ...TRANSACTION_SHEETS.filter(s => s !== activeTab)].filter(s => TRANSACTION_SHEETS.includes(s));
+                        const sheetPromises = orderedSheets.map(sheetName =>
+                            callGasApi({
+                                action: "getSheetData",
+                                sheetName,
+                                role: currentUser.Role,
+                                userId: currentUser.User_ID
+                            }, 15000).then(res => {
+                                if (res.ok && res.data && Array.isArray(res.data.rows)) {
+                                    db.sheets[sheetName] = res.data.rows.map((r, i) => normalizeServerRow(sheetName, r, i));
+                                    if (sheetName === activeTab) {
+                                        renderTabs();
+                                        renderSheetView();
+                                    }
+                                }
+                                return { sheetName, res };
+                            })
+                        );
+
+                        await Promise.all(sheetPromises);
+                    }
+
+                    saveDb();
+                    if (currentUser) {
+                        renderTabs();
+                        renderSheetView();
+                    }
+                    if (notify) showToast("Data berhasil disinkronkan dari Google Sheets.", "success");
+                } finally {
+                    if (spinner) spinner.classList.add("hidden");
+                    activeSyncPromise = null;
                 }
+            })();
 
-                if (initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
-                    db.users = initRes.data.users.map(u => ({
-                        User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
-                        Nama_Lengkap: String(u.nama ?? u.Nama_Lengkap ?? "").trim(),
-                        Role: String(u.role ?? u.Role ?? "KASIR / SA").trim().toUpperCase(),
-                        PIN_Password: String(u.pin ?? u.PIN_Password ?? "123456").trim(),
-                        Status_Aktif: String(u.status ?? u.Status_Aktif ?? "AKTIF").trim().toUpperCase()
-                    }));
-                }
-
-                // 2. Jika sudah login, ambil seluruh 8 sheet transaksi agar badge & filter selalu mutakhir
-                if (currentUser) {
-                    const sheetPromises = TRANSACTION_SHEETS.map(sheetName =>
-                        callGasApi({
-                            action: "getSheetData",
-                            sheetName,
-                            role: currentUser.Role,
-                            userId: currentUser.User_ID
-                        }).then(res => ({ sheetName, res }))
-                    );
-
-                    const results = await Promise.all(sheetPromises);
-                    results.forEach(({ sheetName, res }) => {
-                        if (res.ok && res.data && Array.isArray(res.data.rows)) {
-                            db.sheets[sheetName] = res.data.rows.map((r, i) => normalizeServerRow(sheetName, r, i));
-                        }
-                    });
-                }
-
-                saveDb();
-                if (currentUser) {
-                    renderTabs();
-                    renderSheetView();
-                }
-                if (notify) showToast("Data berhasil disinkronkan dari Google Sheets.", "success");
-            } finally {
-                if (spinner) spinner.classList.add("hidden");
-            }
+            return activeSyncPromise;
         }
 
         // =====================================================
@@ -942,46 +1046,67 @@
             document.getElementById("login-pin").value = pin;
         }
 
+        function setLoginLoading(isLoading) {
+            const btn = document.getElementById("btn-login-submit");
+            const spin = document.getElementById("login-spinner");
+            const txt = document.getElementById("login-btn-text");
+            if (btn) btn.disabled = isLoading;
+            if (spin) spin.classList.toggle("hidden", !isLoading);
+            if (txt) txt.textContent = isLoading ? "Memverifikasi Akun..." : "Masuk ke Workspace";
+        }
+
         async function handleLogin(e) {
             e.preventDefault();
             const uid = document.getElementById("login-userid").value.trim();
             const pin = document.getElementById("login-pin").value.trim();
 
-            // Jika terhubung ke Google Sheets, pastikan daftar Master User terbaru ditarik dulu
-            if (!isSimulationMode()) {
-                const initRes = await callGasApi({ action: "getInitialData" });
-                if (initRes.ok && initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
-                    db.users = initRes.data.users.map(u => ({
-                        User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
-                        Nama_Lengkap: String(u.nama ?? u.Nama_Lengkap ?? "").trim(),
-                        Role: String(u.role ?? u.Role ?? "KASIR / SA").trim().toUpperCase(),
-                        PIN_Password: String(u.pin ?? u.PIN_Password ?? "123456").trim(),
-                        Status_Aktif: String(u.status ?? u.Status_Aktif ?? "AKTIF").trim().toUpperCase()
-                    }));
-                    saveDb();
+            setLoginLoading(true);
+            try {
+                // Cek cepat dari cache lokal dulu agar langsung masuk tanpa menunggu network lama
+                let user = db.users.find(u =>
+                    normalizeId(u.User_ID) === normalizeId(uid) &&
+                    String(u.PIN_Password).trim() === pin
+                );
+
+                // Jika belum ada di cache lokal & online, ambil dari Google Sheets
+                if (!user && !isSimulationMode()) {
+                    const initRes = await callGasApi({ action: "getInitialData" }, 10000);
+                    if (initRes.ok && initRes.data && Array.isArray(initRes.data.users) && initRes.data.users.length > 0) {
+                        db.users = initRes.data.users.map(u => ({
+                            User_ID: String(u.userId ?? u.User_ID ?? "").trim(),
+                            Nama_Lengkap: String(u.nama ?? u.Nama_Lengkap ?? "").trim(),
+                            Role: String(u.role ?? u.Role ?? "KASIR / SA").trim().toUpperCase(),
+                            PIN_Password: String(u.pin ?? u.PIN_Password ?? "123456").trim(),
+                            Status_Aktif: String(u.status ?? u.Status_Aktif ?? "AKTIF").trim().toUpperCase()
+                        }));
+                        saveDb();
+                        user = db.users.find(u =>
+                            normalizeId(u.User_ID) === normalizeId(uid) &&
+                            String(u.PIN_Password).trim() === pin
+                        );
+                    }
                 }
-            }
 
-            const user = db.users.find(u =>
-                normalizeId(u.User_ID) === normalizeId(uid) &&
-                String(u.PIN_Password).trim() === pin
-            );
+                if (!user) {
+                    showToast("User ID atau PIN/Password tidak cocok dengan Master User.", "error");
+                    return;
+                }
+                if (String(user.Status_Aktif).toUpperCase() !== "AKTIF") {
+                    showToast("Akun berstatus NONAKTIF. Hubungi Admin.", "error");
+                    return;
+                }
 
-            if (!user) {
-                showToast("User ID atau PIN/Password tidak cocok dengan Master User.", "error");
-                return;
-            }
-            if (String(user.Status_Aktif).toUpperCase() !== "AKTIF") {
-                showToast("Akun berstatus NONAKTIF. Hubungi Admin.", "error");
-                return;
-            }
+                currentUser = { ...user, role: user.Role };
+                localStorage.setItem(KEY_SESSION, JSON.stringify(currentUser));
+                updateAdminOnlyVisibility();
+                showWorkspace();
+                showToast(`Login berhasil: ${user.Nama_Lengkap} (${user.Role})`, "success");
 
-            currentUser = { ...user, role: user.Role };
-            localStorage.setItem(KEY_SESSION, JSON.stringify(currentUser));
-            updateAdminOnlyVisibility();
-            showWorkspace();
-            await refreshAllData(false);
-            showToast(`Login berhasil: ${user.Nama_Lengkap} (${user.Role})`, "success");
+                // Sinkronisasi data transaksi terbaru di latar belakang (non-blocking)
+                refreshAllData(false);
+            } finally {
+                setLoginLoading(false);
+            }
         }
 
         function logoutUser() {
@@ -1034,18 +1159,107 @@
         // =====================================================
         // 6. TABS, HAK AKSES BARIS & RENDER
         // =====================================================
+        function getGroupKey(sheetName, r) {
+            const trx = String(r.TRXNUM || "").trim().toUpperCase();
+            const dt = String(r.TrxDate || "").trim();
+            const cash = normalizeId(r.CashNum || "");
+            const reg = normalizeId(r.RegNum || "");
+            // Jika TRXNUM valid (bukan kosong atau "0"), satukan semua SKU dalam 1 transaksi yang sama
+            if (trx && trx !== "0" && trx !== "-") {
+                return `${sheetName}|TRX|${dt}|${reg}|${trx}|${cash}`;
+            }
+            // Fallback jika TRXNUM kosong/0 (misal Void sebelum nomor struk): kelompokkan per tanggal, jam, POS, kasir
+            const tm = String(r.TrxTime || "").trim();
+            return `${sheetName}|NO_TRX|${dt}|${tm}|${reg}|${cash}|${r.id}`;
+        }
+
+        function groupTransactions(sheetName, rows) {
+            const map = new Map();
+            rows.forEach(r => {
+                const gKey = getGroupKey(sheetName, r);
+                if (!map.has(gKey)) {
+                    map.set(gKey, {
+                        groupKey: gKey,
+                        primaryId: r.id,
+                        TrxDate: r.TrxDate,
+                        TrxTime: r.TrxTime,
+                        RegNum: r.RegNum,
+                        TRXNUM: r.TRXNUM,
+                        CashNum: r.CashNum,
+                        AuthID: r.AuthID,
+                        Remarks_Kasir: r.Remarks_Kasir || "",
+                        Waktu_Remarks_Kasir: r.Waktu_Remarks_Kasir || "",
+                        Status_Verifikasi_SPV: r.Status_Verifikasi_SPV || "PENDING",
+                        SPV_Verifikator_ID: r.SPV_Verifikator_ID || "",
+                        SPV_Verifikator_Nama: r.SPV_Verifikator_Nama || "",
+                        Catatan_SPV: r.Catatan_SPV || "",
+                        Paraf_TTD_Digital_SPV: r.Paraf_TTD_Digital_SPV || "",
+                        Waktu_Verifikasi_SPV: r.Waktu_Verifikasi_SPV || "",
+                        items: [],
+                        totalPrice: 0,
+                        totalAmount: 0,
+                        totalDisc: 0,
+                        totalNetAmount: 0
+                    });
+                }
+                const grp = map.get(gKey);
+                const price = parseCurrencyNumber(r.Price ?? r.Amount);
+                const amount = parseCurrencyNumber(r.Amount ?? price);
+                const disc = parseCurrencyNumber(r.Disc ?? 0);
+                const netAmount = parseCurrencyNumber(r.NetAmount ?? Math.max(0, amount - disc));
+
+                grp.items.push({
+                    id: r.id,
+                    SKU: r.SKU || "-",
+                    Description: r.Description || "-",
+                    Qty: r.Qty || 1,
+                    Price: price,
+                    Amount: amount,
+                    Disc: disc,
+                    NetAmount: netAmount
+                });
+                grp.totalPrice += price;
+                grp.totalAmount += amount;
+                grp.totalDisc += disc;
+                grp.totalNetAmount += netAmount;
+
+                // Ambil status / remarks terisi jika salah satu baris dalam grup sudah terisi
+                if (!grp.Remarks_Kasir && (r.Remarks_Kasir || "").trim()) {
+                    grp.Remarks_Kasir = r.Remarks_Kasir;
+                    grp.Waktu_Remarks_Kasir = r.Waktu_Remarks_Kasir || "";
+                }
+                if (grp.Status_Verifikasi_SPV === "PENDING" && r.Status_Verifikasi_SPV && r.Status_Verifikasi_SPV !== "PENDING") {
+                    grp.Status_Verifikasi_SPV = r.Status_Verifikasi_SPV;
+                    grp.SPV_Verifikator_ID = r.SPV_Verifikator_ID || "";
+                    grp.SPV_Verifikator_Nama = r.SPV_Verifikator_Nama || "";
+                    grp.Catatan_SPV = r.Catatan_SPV || "";
+                    grp.Paraf_TTD_Digital_SPV = r.Paraf_TTD_Digital_SPV || "";
+                    grp.Waktu_Verifikasi_SPV = r.Waktu_Verifikasi_SPV || "";
+                }
+            });
+            return Array.from(map.values());
+        }
+
         function getVisibleRowsForSheet(sheetName) {
             const list = db.sheets[sheetName] || [];
             if (!currentUser) return [];
             const myId = normalizeId(currentUser.User_ID);
 
+            let scoped = list;
             if (currentUser.Role === "KASIR / SA") {
-                return list.filter(r => normalizeId(r.CashNum) === myId);
+                scoped = list.filter(r => normalizeId(r.CashNum) === myId);
+            } else if (currentUser.Role === "SPV") {
+                scoped = list.filter(r => normalizeId(r.AuthID) === myId);
             }
-            if (currentUser.Role === "SPV") {
-                return list.filter(r => normalizeId(r.AuthID) === myId);
-            }
-            return list;
+            return groupTransactions(sheetName, scoped);
+        }
+
+        function getRawRowsForGroup(sheetName, primaryId) {
+            const list = db.sheets[sheetName] || [];
+            const target = list.find(r => r.id === primaryId);
+            if (!target) return [];
+            const gKey = getGroupKey(sheetName, target);
+            return list.filter(r => getGroupKey(sheetName, r) === gKey);
         }
 
         function renderTabs() {
@@ -1104,20 +1318,19 @@
             document.getElementById("stat-done-spv").textContent = doneSpv;
         }
 
-        function buildRowActionsHtml(row) {
+        function buildRowActionsHtml(grp) {
             const role = currentUser.Role;
-            const hasRemarks = Boolean((row.Remarks_Kasir || "").trim());
-            const status = String(row.Status_Verifikasi_SPV || "PENDING").toUpperCase();
+            const hasRemarks = Boolean((grp.Remarks_Kasir || "").trim());
+            const status = String(grp.Status_Verifikasi_SPV || "PENDING").toUpperCase();
             const isVerified = status === "APPROVED" || status === "REJECTED";
-            const isCashOwner = normalizeId(row.CashNum) === normalizeId(currentUser.User_ID);
-            const isSpvOwner = normalizeId(row.AuthID) === normalizeId(currentUser.User_ID);
+            const isCashOwner = normalizeId(grp.CashNum) === normalizeId(currentUser.User_ID);
+            const isSpvOwner = normalizeId(grp.AuthID) === normalizeId(currentUser.User_ID);
 
             let parts = [];
 
-            // Kasir hanya bisa mengisi & mengedit Remarks_Kasir selama belum diverifikasi SPV (Admin bisa edit kapan saja)
             if (role === "ADMIN") {
                 parts.push(`
-                    <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${row.id}')"
+                    <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
                         class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                         ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
                     </button>
@@ -1125,7 +1338,7 @@
             } else if (role === "KASIR / SA" && isCashOwner) {
                 if (!isVerified) {
                     parts.push(`
-                        <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${row.id}')"
+                        <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
                             class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                             ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
                         </button>
@@ -1139,7 +1352,6 @@
                 }
             }
 
-            // SPV hanya bisa verifikasi transaksi AuthID miliknya & jika Remarks_Kasir sudah terisi
             if (role === "SPV" && isSpvOwner) {
                 if (!hasRemarks) {
                     parts.push(`
@@ -1150,7 +1362,7 @@
                     `);
                 } else {
                     parts.push(`
-                        <button type="button" onclick="openVerifyModal('${activeTab.replace(/'/g, "\\'")}', '${row.id}')"
+                        <button type="button" onclick="openVerifyModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
                             class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition">
                             ${isVerified ? "Ubah Verifikasi & Paraf" : "Verifikasi & Paraf"}
                         </button>
@@ -1172,6 +1384,41 @@
                 return `<a href="${sigVal}" target="_blank" rel="noopener" class="inline-block mt-1 text-[10px] font-bold text-indigo-600 underline">Lihat Paraf Digital (Drive)</a>`;
             }
             return `<span class="text-[10px] font-semibold text-emerald-700 block mt-0.5">Paraf Digital Tersimpan</span>`;
+        }
+
+        function renderGroupItemsHtml(grp) {
+            const skuSummary = grp.items.map(it => `${it.SKU} ${it.Description}`).join(" ");
+            return `
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-mono font-extrabold text-slate-900">${grp.TRXNUM || "-"}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">${grp.items.length} SKU</span>
+                </div>
+                <div class="mt-1.5 space-y-1 max-h-36 overflow-y-auto pr-1">
+                    ${grp.items.map((it, i) => `
+                        <div class="text-[11px] leading-snug bg-slate-50/90 border border-slate-200/70 rounded-lg px-2 py-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-mono font-bold text-indigo-700">${i + 1}. ${it.SKU}</span>
+                                <span class="font-bold text-slate-800 whitespace-nowrap">${formatRupiah(it.NetAmount)}</span>
+                            </div>
+                            <div class="text-slate-600">${it.Description}</div>
+                            <div class="text-[10px] text-slate-400">
+                                Price: ${formatRupiah(it.Price)} • Amt: ${formatRupiah(it.Amount)} • Disc: ${formatRupiah(it.Disc)}
+                            </div>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+        function renderNominalBreakdownHtml(grp) {
+            return `
+                <div class="space-y-0.5 text-[11px]">
+                    <div class="text-slate-500">Price: <span class="font-semibold text-slate-700">${formatRupiah(grp.totalPrice)}</span></div>
+                    <div class="text-slate-500">Amount: <span class="font-semibold text-slate-700">${formatRupiah(grp.totalAmount)}</span></div>
+                    <div class="text-rose-600">Disc: <span class="font-semibold">-${formatRupiah(grp.totalDisc)}</span></div>
+                    <div class="pt-0.5 border-t border-slate-200 font-extrabold text-slate-900 text-xs">Net: ${formatRupiah(grp.totalNetAmount)}</div>
+                </div>
+            `;
         }
 
         function renderSheetView() {
@@ -1210,7 +1457,8 @@
                 }
 
                 if (kw) {
-                    const hay = `${r.TRXNUM} ${r.SKU} ${r.Description} ${r.RegNum} ${r.CashNum} ${r.AuthID} ${r.Remarks_Kasir} ${r.Catatan_SPV}`.toLowerCase();
+                    const itemsText = r.items.map(it => `${it.SKU} ${it.Description}`).join(" ");
+                    const hay = `${r.TRXNUM} ${itemsText} ${r.RegNum} ${r.CashNum} ${r.AuthID} ${r.Remarks_Kasir} ${r.Catatan_SPV}`.toLowerCase();
                     if (!hay.includes(kw)) return false;
                 }
                 return true;
@@ -1231,11 +1479,12 @@
                         <div class="font-bold text-slate-900">${r.TrxDate || "-"}</div>
                         <div class="text-[11px] text-slate-500">${r.TrxTime || ""} • <span class="font-semibold text-indigo-600">${r.RegNum || "-"}</span></div>
                     </td>
-                    <td class="py-3 px-3.5">
-                        <div class="font-mono font-bold text-slate-900">${r.TRXNUM || "-"} <span class="text-slate-300">|</span> ${r.SKU || "-"}</div>
-                        <div class="text-slate-600 mt-0.5">${r.Description || "-"}</div>
+                    <td class="py-3 px-3.5 min-w-[240px] max-w-[320px]">
+                        ${renderGroupItemsHtml(r)}
                     </td>
-                    <td class="py-3 px-3.5 text-right font-bold text-slate-900 whitespace-nowrap">${formatRupiah(r.Amount)}</td>
+                    <td class="py-3 px-3.5 text-right whitespace-nowrap">
+                        ${renderNominalBreakdownHtml(r)}
+                    </td>
                     <td class="py-3 px-3.5 whitespace-nowrap">
                         <div class="text-[11px]">CashNum: <strong class="font-mono">${r.CashNum || "-"}</strong></div>
                         <div class="text-[11px]">AuthID: <strong class="font-mono text-indigo-700">${r.AuthID || "-"}</strong></div>
@@ -1260,13 +1509,32 @@
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">${r.RegNum || "POS"} • ${r.TrxDate || ""} ${r.TrxTime || ""}</span>
-                            <div class="font-mono font-extrabold text-xs text-slate-900 mt-1.5">Trx: ${r.TRXNUM || "-"} | SKU: ${r.SKU || "-"}</div>
-                            <div class="text-xs text-slate-600">${r.Description || "-"}</div>
+                            <div class="font-mono font-extrabold text-xs text-slate-900 mt-1.5">Trx: ${r.TRXNUM || "-"} (${r.items.length} SKU)</div>
                         </div>
                         <div class="text-right shrink-0">
-                            <div class="text-xs font-extrabold text-slate-900">${formatRupiah(r.Amount)}</div>
+                            <div class="text-xs font-extrabold text-slate-900">Net: ${formatRupiah(r.totalNetAmount)}</div>
                             <div class="mt-1">${getStatusBadge(r)}</div>
                         </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        ${r.items.map((it, idx) => `
+                            <div class="p-2 rounded-xl bg-slate-50 border border-slate-200/70 text-[11px]">
+                                <div class="flex justify-between font-bold text-slate-800">
+                                    <span class="font-mono text-indigo-700">${idx + 1}. ${it.SKU}</span>
+                                    <span>Net: ${formatRupiah(it.NetAmount)}</span>
+                                </div>
+                                <div class="text-slate-600">${it.Description}</div>
+                                <div class="text-[10px] text-slate-400 mt-0.5">Price: ${formatRupiah(it.Price)} | Amt: ${formatRupiah(it.Amount)} | Disc: -${formatRupiah(it.Disc)}</div>
+                            </div>
+                        `).join("")}
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5 text-[11px] bg-indigo-50/40 px-3 py-2 rounded-xl border border-indigo-100">
+                        <div>Total Price: <strong>${formatRupiah(r.totalPrice)}</strong></div>
+                        <div class="text-right">Total Amount: <strong>${formatRupiah(r.totalAmount)}</strong></div>
+                        <div class="text-rose-600">Total Disc: <strong>-${formatRupiah(r.totalDisc)}</strong></div>
+                        <div class="text-right text-slate-900">Net Amount: <strong>${formatRupiah(r.totalNetAmount)}</strong></div>
                     </div>
 
                     <div class="flex justify-between text-[11px] bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
@@ -1302,7 +1570,8 @@
         // 7. MODAL & AKSI REMARKS KASIR
         // =====================================================
         function openRemarksModal(sheetName, trxId) {
-            const row = (db.sheets[sheetName] || []).find(r => r.id === trxId);
+            const groupRows = getRawRowsForGroup(sheetName, trxId);
+            const row = groupRows[0];
             if (!row) return;
 
             const status = String(row.Status_Verifikasi_SPV || "PENDING").toUpperCase();
@@ -1311,11 +1580,14 @@
                 return;
             }
 
+            const totalNet = groupRows.reduce((s, x) => s + parseCurrencyNumber(x.NetAmount ?? x.Amount), 0);
+            const skuList = groupRows.map(x => `${x.SKU} (${x.Description})`).join(", ");
+
             activeActionTarget = { sheetName, trxId };
             document.getElementById("remarks-detail-box").innerHTML = `
-                <div><strong>Sheet:</strong> ${sheetName} • <strong>Trx:</strong> ${row.TRXNUM} • <strong>SKU:</strong> ${row.SKU}</div>
-                <div><strong>Item:</strong> ${row.Description} (${formatRupiah(row.Amount)})</div>
-                <div><strong>CashNum:</strong> ${row.CashNum} • <strong>AuthID SPV:</strong> ${row.AuthID}</div>
+                <div><strong>Sheet:</strong> ${sheetName} • <strong>Trx:</strong> ${row.TRXNUM || "-"} (${groupRows.length} SKU)</div>
+                <div><strong>Daftar Item:</strong> ${skuList}</div>
+                <div><strong>Total NetAmount:</strong> ${formatRupiah(totalNet)} • <strong>CashNum:</strong> ${row.CashNum} • <strong>AuthID SPV:</strong> ${row.AuthID}</div>
             `;
             document.getElementById("remarks-text").value = row.Remarks_Kasir || "";
             document.getElementById("remarks-modal").classList.remove("hidden");
@@ -1339,33 +1611,38 @@
             }
 
             const { sheetName, trxId } = activeActionTarget;
-            const row = (db.sheets[sheetName] || []).find(r => r.id === trxId);
-            if (!row) return;
+            const groupRows = getRawRowsForGroup(sheetName, trxId);
+            if (groupRows.length === 0) return;
 
-            const res = await callGasApi({
-                action: "saveRemarks",
-                sheetName,
-                rowIndex: row._rowIndex,
-                trxId: row.id,
-                remarks: text,
-                actorId: currentUser.User_ID
-            });
+            // Simpan remarks ke seluruh baris SKU milik transaksi yang sama
+            const responses = await Promise.all(groupRows.map(r =>
+                callGasApi({
+                    action: "saveRemarks",
+                    sheetName,
+                    rowIndex: r._rowIndex,
+                    trxId: r.id,
+                    remarks: text,
+                    actorId: currentUser.User_ID
+                })
+            ));
 
-            if (!res.ok) {
+            if (responses.some(res => !res.ok)) {
                 showToast("Gagal menyimpan remarks ke Google Sheets.", "error");
                 return;
             }
 
-            const waktu = (res.data && res.data.waktuRemarks) ? res.data.waktuRemarks : nowString();
-            row.Remarks_Kasir = text;
-            row.Waktu_Remarks_Kasir = waktu;
-            if (!row.Status_Verifikasi_SPV) row.Status_Verifikasi_SPV = "PENDING";
+            const waktu = (responses[0]?.data && responses[0].data.waktuRemarks) ? responses[0].data.waktuRemarks : nowString();
+            groupRows.forEach(r => {
+                r.Remarks_Kasir = text;
+                r.Waktu_Remarks_Kasir = waktu;
+                if (!r.Status_Verifikasi_SPV) r.Status_Verifikasi_SPV = "PENDING";
+            });
 
             saveDb();
             closeRemarksModal();
             renderTabs();
             renderSheetView();
-            showToast("Remarks kasir tersimpan.", "success");
+            showToast(`Remarks kasir tersimpan untuk transaksi (${groupRows.length} SKU).`, "success");
         }
 
         // =====================================================
@@ -1437,23 +1714,29 @@
                 showToast("Hanya SPV yang dapat memverifikasi.", "error");
                 return;
             }
-            const row = (db.sheets[sheetName] || []).find(r => r.id === trxId);
+            const groupRows = getRawRowsForGroup(sheetName, trxId);
+            const row = groupRows[0];
             if (!row) return;
 
             if (normalizeId(row.AuthID) !== normalizeId(currentUser.User_ID)) {
                 showToast("AuthID transaksi tidak sesuai dengan ID SPV Anda.", "error");
                 return;
             }
-            if (!(row.Remarks_Kasir || "").trim()) {
+            const sharedRemarks = (groupRows.find(x => (x.Remarks_Kasir || "").trim())?.Remarks_Kasir || "").trim();
+            if (!sharedRemarks) {
                 showToast("Menunggu Remarks Kasir dulu sebelum verifikasi SPV.", "error");
                 return;
             }
 
+            const totalNet = groupRows.reduce((s, x) => s + parseCurrencyNumber(x.NetAmount ?? x.Amount), 0);
+            const skuList = groupRows.map(x => `${x.SKU} (${x.Description})`).join(", ");
+
             activeActionTarget = { sheetName, trxId };
             document.getElementById("verify-detail-box").innerHTML = `
-                <div><strong>Sheet:</strong> ${sheetName} • <strong>Trx:</strong> ${row.TRXNUM} • <strong>SKU:</strong> ${row.SKU}</div>
-                <div><strong>CashNum:</strong> ${row.CashNum} • <strong>Nominal:</strong> ${formatRupiah(row.Amount)}</div>
-                <div class="mt-1 pt-1 border-t border-slate-200"><strong>Remarks_Kasir:</strong> <span class="text-indigo-800 font-semibold">${row.Remarks_Kasir}</span></div>
+                <div><strong>Sheet:</strong> ${sheetName} • <strong>Trx:</strong> ${row.TRXNUM || "-"} (${groupRows.length} SKU)</div>
+                <div><strong>Daftar Item:</strong> ${skuList}</div>
+                <div><strong>CashNum:</strong> ${row.CashNum} • <strong>Total NetAmount:</strong> ${formatRupiah(totalNet)}</div>
+                <div class="mt-1 pt-1 border-t border-slate-200"><strong>Remarks_Kasir:</strong> <span class="text-indigo-800 font-semibold">${sharedRemarks}</span></div>
             `;
 
             const targetStatus = String(row.Status_Verifikasi_SPV).toUpperCase() === "REJECTED" ? "REJECTED" : "APPROVED";
@@ -1486,8 +1769,10 @@
             e.preventDefault();
             if (!activeActionTarget) return;
 
-            const row = (db.sheets[activeActionTarget.sheetName] || []).find(r => r.id === activeActionTarget.trxId);
-            if (!row || !(row.Remarks_Kasir || "").trim()) {
+            const groupRows = getRawRowsForGroup(activeActionTarget.sheetName, activeActionTarget.trxId);
+            const row = groupRows[0];
+            const sharedRemarks = (groupRows.find(x => (x.Remarks_Kasir || "").trim())?.Remarks_Kasir || "").trim();
+            if (!row || !sharedRemarks) {
                 showToast("Remarks_Kasir wajib ada sebelum verifikasi SPV.", "error");
                 return;
             }
@@ -1500,38 +1785,42 @@
             const note = document.getElementById("spv-note").value.trim();
             const sigDataUrl = canvasEl.toDataURL("image/png");
 
-            const res = await callGasApi({
-                action: "saveVerification",
-                sheetName: activeActionTarget.sheetName,
-                rowIndex: row._rowIndex,
-                trxId: row.id,
-                status: chosen,
-                catatanSpv: note,
-                signatureBase64: sigDataUrl,
-                spvId: currentUser.User_ID,
-                spvName: currentUser.Nama_Lengkap
-            });
+            const responses = await Promise.all(groupRows.map(r =>
+                callGasApi({
+                    action: "saveVerification",
+                    sheetName: activeActionTarget.sheetName,
+                    rowIndex: r._rowIndex,
+                    trxId: r.id,
+                    status: chosen,
+                    catatanSpv: note,
+                    signatureBase64: sigDataUrl,
+                    spvId: currentUser.User_ID,
+                    spvName: currentUser.Nama_Lengkap
+                })
+            ));
 
-            if (!res.ok) {
+            if (responses.some(res => !res.ok)) {
                 showToast("Gagal menyimpan verifikasi ke Google Sheets.", "error");
                 return;
             }
 
-            const waktu = (res.data && res.data.waktuVerifikasi) ? res.data.waktuVerifikasi : nowString();
-            const parafRef = (res.data && res.data.parafRef) ? res.data.parafRef : sigDataUrl;
+            const waktu = (responses[0]?.data && responses[0].data.waktuVerifikasi) ? responses[0].data.waktuVerifikasi : nowString();
+            const parafRef = (responses[0]?.data && responses[0].data.parafRef) ? responses[0].data.parafRef : sigDataUrl;
 
-            row.Status_Verifikasi_SPV = chosen;
-            row.SPV_Verifikator_ID = currentUser.User_ID;
-            row.SPV_Verifikator_Nama = currentUser.Nama_Lengkap;
-            row.Catatan_SPV = note;
-            row.Paraf_TTD_Digital_SPV = parafRef;
-            row.Waktu_Verifikasi_SPV = waktu;
+            groupRows.forEach(r => {
+                r.Status_Verifikasi_SPV = chosen;
+                r.SPV_Verifikator_ID = currentUser.User_ID;
+                r.SPV_Verifikator_Nama = currentUser.Nama_Lengkap;
+                r.Catatan_SPV = note;
+                r.Paraf_TTD_Digital_SPV = parafRef;
+                r.Waktu_Verifikasi_SPV = waktu;
+            });
 
             saveDb();
             closeVerifyModal();
             renderTabs();
             renderSheetView();
-            showToast(`Verifikasi ${chosen} & paraf digital tersimpan.`, "success");
+            showToast(`Verifikasi ${chosen} & paraf digital tersimpan (${groupRows.length} SKU).`, "success");
         }
 
         // =====================================================
@@ -1559,17 +1848,50 @@
             const sku = String(item.SKU || "").trim().toUpperCase();
             const cash = normalizeId(item.CashNum || "");
             const desc = String(item.Description || "").trim().toUpperCase();
+            const net = parseCurrencyNumber(item.NetAmount ?? item.Amount);
 
             if (sheetName === "Void-Bill Cancelation") {
-                return `${sheetName}|${dt}|${tm}|${reg}|${sku}|${cash}|${desc}`;
+                return `${sheetName}|${dt}|${tm}|${reg}|${sku}|${cash}|${desc}|${net}`;
             }
             if (sheetName === "Unmatch Transaksi") {
-                return `${sheetName}|${dt}|${tm}|${reg}|${sku}|${cash}`;
+                return `${sheetName}|${dt}|${tm}|${reg}|${sku}|${cash}|${net}`;
             }
             if (sheetName === "Parked Invoice" || sheetName === "Print Duplicate") {
-                return `${sheetName}|${dt}|${tm}|${trx}|${cash}`;
+                return `${sheetName}|${dt}|${tm}|${trx}|${sku}|${cash}|${net}`;
             }
-            return `${sheetName}|${dt}|${tm}|${trx}|${sku}|${cash}`;
+            return `${sheetName}|${dt}|${tm}|${trx}|${sku}|${cash}|${net}`;
+        }
+
+        function findMatchingSheetName(wbSheetNames, targetSheetName) {
+            const normTarget = targetSheetName.toLowerCase().replace(/[^a-z0-9]/g, "");
+            return wbSheetNames.find(n => {
+                const normN = n.toLowerCase().replace(/[^a-z0-9]/g, "");
+                return normN === normTarget || normN.includes(normTarget) || normTarget.includes(normN);
+            });
+        }
+
+        function extractSheetRowsSmart(ws) {
+            // Baca sebagai array 2D dulu agar tidak terpengaruh baris judul/header kosong di baris 1-3 Excel
+            const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+            if (!Array.isArray(matrix) || matrix.length === 0) return [];
+
+            const headerTokens = ["trxdate", "trxnum", "sku", "cashnum", "authid", "amount", "price", "netamount", "description", "regnum", "item"];
+            let headerRowIdx = 0;
+            let bestScore = -1;
+
+            for (let i = 0; i < Math.min(10, matrix.length); i++) {
+                const rowCells = (matrix[i] || []).map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, ""));
+                const score = rowCells.filter(c => headerTokens.some(t => c === t || c.includes(t))).length;
+                if (score > bestScore) {
+                    bestScore = score;
+                    headerRowIdx = i;
+                }
+            }
+
+            if (bestScore >= 2 && headerRowIdx > 0) {
+                return XLSX.utils.sheet_to_json(ws, { range: headerRowIdx, defval: "" });
+            }
+            return XLSX.utils.sheet_to_json(ws, { defval: "" });
         }
 
         function processExcelUpload(event) {
@@ -1589,7 +1911,7 @@
                     const itemsHtml = [];
 
                     for (const sheetName of TRANSACTION_SHEETS) {
-                        const matchedName = wb.SheetNames.find(n => n.trim().toLowerCase() === sheetName.toLowerCase());
+                        const matchedName = findMatchingSheetName(wb.SheetNames, sheetName);
                         if (!matchedName) {
                             itemsHtml.push(`
                                 <div class="p-3 flex items-center justify-between bg-slate-50">
@@ -1600,7 +1922,7 @@
                             continue;
                         }
 
-                        const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[matchedName], { defval: "" });
+                        const rawRows = extractSheetRowsSmart(wb.Sheets[matchedName]);
                         if (!Array.isArray(db.sheets[sheetName])) db.sheets[sheetName] = [];
 
                         const existingKeys = new Set(db.sheets[sheetName].map(r => buildRowUniqueKey(sheetName, r)));
@@ -1609,30 +1931,14 @@
                         const sheetRowsToSend = [];
 
                         rawRows.forEach((raw, idx) => {
+                            const norm = normalizeServerRow(sheetName, raw, idx);
                             const rec = {
-                                id: `${sheetName.slice(0, 2).toUpperCase()}-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
-                                TrxDate: String(raw.TrxDate || raw.TRXDATE || raw.Date || "").trim(),
-                                TrxTime: String(raw.TrxTime || raw.CreateTime || raw.TimeOfParking || raw.Time || "").trim(),
-                                RegNum: String(raw.RegNum || raw.REGNUM || raw.StoreCounter || raw.POS || "POS-01").trim(),
-                                TRXNUM: String(raw.TRXNUM || raw.TrxNum || raw.ParkedInvoiceNumber || raw.Invoice || "").trim(),
-                                SKU: String(raw.SKU || "").trim(),
-                                Description: String(raw.Description || raw.Item || raw.Keterangan || "").trim(),
-                                Amount: Number(String(raw.Amount || raw.Total || raw.Nominal || 0).replace(/[^0-9.-]/g, "")) || 0,
-                                CashNum: String(raw.CashNum || raw["Cash Num"] || raw["Cashier Name and ID"] || raw.CashierID || "").trim(),
-                                AuthID: String(raw.AuthID || raw.AuthId || raw.SPV_ID || "").trim(),
-                                Remarks_Kasir: String(raw.Remarks_Kasir || "").trim(),
-                                Waktu_Remarks_Kasir: String(raw.Waktu_Remarks_Kasir || "").trim(),
-                                Status_Verifikasi_SPV: String(raw.Status_Verifikasi_SPV || "PENDING").trim() || "PENDING",
-                                SPV_Verifikator_ID: String(raw.SPV_Verifikator_ID || "").trim(),
-                                SPV_Verifikator_Nama: String(raw.SPV_Verifikator_Nama || "").trim(),
-                                Catatan_SPV: String(raw.Catatan_SPV || "").trim(),
-                                Paraf_TTD_Digital_SPV: String(raw.Paraf_TTD_Digital_SPV || "").trim(),
-                                Waktu_Verifikasi_SPV: String(raw.Waktu_Verifikasi_SPV || "").trim()
+                                ...norm,
+                                id: `${sheetName.slice(0, 2).toUpperCase()}-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`
                             };
 
-                            if (!rec.CashNum && !rec.TRXNUM && !rec.SKU && !rec.Description) return;
+                            if (!rec.CashNum && !rec.TRXNUM && !rec.SKU && (!rec.Description || rec.Description === "-")) return;
 
-                            // Sertakan juga kolom asli agar pemetaan Apps Script tetap cocok
                             const serverObj = {
                                 ...raw,
                                 ...rec,
@@ -1645,7 +1951,11 @@
                                 TrxNum: rec.TRXNUM,
                                 SKU: rec.SKU,
                                 Description: rec.Description,
+                                PRICE: rec.Price,
+                                Price: rec.Price,
                                 Amount: rec.Amount,
+                                Disc: rec.Disc,
+                                NetAmount: rec.NetAmount,
                                 CashNum: rec.CashNum,
                                 AuthID: rec.AuthID
                             };
@@ -1677,7 +1987,7 @@
                     }
 
                     saveDb();
-                    const res = await callGasApi({ action: "uploadDailyExcel", sheetsData: sheetsPayload });
+                    const res = await callGasApi({ action: "uploadDailyExcel", sheetsData: sheetsPayload }, 30000);
 
                     if (!res.simulated && res.ok && res.data && res.data.detailPerSheet) {
                         localAdded = res.data.totalAdded ?? localAdded;
@@ -1732,7 +2042,10 @@
                     TRXNUM: r.TRXNUM,
                     SKU: r.SKU,
                     Description: r.Description,
+                    PRICE: r.Price ?? r.Amount,
                     Amount: r.Amount,
+                    Disc: r.Disc ?? 0,
+                    NetAmount: r.NetAmount ?? r.Amount,
                     CashNum: r.CashNum,
                     AuthID: r.AuthID,
                     Remarks_Kasir: r.Remarks_Kasir,
