@@ -66,6 +66,9 @@
                         <span id="conn-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                             Terhubung Google Sheets
                         </span>
+                        <span id="latest-data-date-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                            Data terakhir: -
+                        </span>
                     </div>
                     <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">Lippo Plaza Jambi • Store 312</p>
                 </div>
@@ -191,8 +194,8 @@
                 <button type="button" onclick="openUploadModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition">
                     Upload Excel Harian (.xlsx)
                 </button>
-                <button type="button" onclick="exportSheetToExcel()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm transition">
-                    Export Sheet ke .xlsx
+                <button type="button" onclick="openExportModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm transition">
+                    Export / Download (.xlsx)
                 </button>
             </div>
         </div>
@@ -421,6 +424,48 @@
                     <button type="button" onclick="closeUploadModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-900">Selesai</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL 3B: EXPORT EXCEL BERDASARKAN RENTANG TANGGAL    -->
+    <!-- ===================================================== -->
+    <div id="export-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">Download / Export Excel (.xlsx)</h3>
+                <button type="button" onclick="closeExportModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
+            </div>
+            <form onsubmit="submitExportByDateRange(event)" class="p-5 space-y-4 text-xs">
+                <p class="text-slate-600 leading-relaxed">
+                    Pilih rentang tanggal transaksi (<code>TrxDate</code>) yang ingin diunduh. Kosongkan kedua tanggal jika ingin mengunduh seluruh data di database.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Dari Tanggal</label>
+                        <input type="date" id="export-start-date"
+                            class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Sampai Tanggal</label>
+                        <input type="date" id="export-end-date"
+                            class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="clearExportDateRange()" class="px-3 py-2 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                        Semua Tanggal
+                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeExportModal()" class="px-3.5 py-2 rounded-xl font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+                        <button type="submit" class="px-4 py-2 rounded-xl font-bold text-white bg-slate-800 hover:bg-slate-900 shadow-sm">
+                            Download .xlsx
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -659,6 +704,19 @@
             return "";
         }
 
+        // Mengambil nominal dari nama kolom atau nilai pada indeks/posisi kolom tertentu (misal kolom F)
+        function getNominalByPositionOrName(raw, preferredNames = [], fallbackColIdx = 5) {
+            const byName = getFieldCI(raw, preferredNames);
+            if (byName !== "" && byName !== null && byName !== undefined) {
+                return parseCurrencyNumber(byName);
+            }
+            const vals = Object.values(raw || {});
+            if (vals.length > fallbackColIdx && vals[fallbackColIdx] !== "" && vals[fallbackColIdx] !== null && vals[fallbackColIdx] !== undefined) {
+                return parseCurrencyNumber(vals[fallbackColIdx]);
+            }
+            return 0;
+        }
+
         function formatExcelDate(val) {
             if (val === null || val === undefined || val === "") return "";
             if (typeof val === "number" && val > 20000 && val < 90000) {
@@ -799,6 +857,67 @@
                 badge.textContent = "Terhubung Google Sheets";
                 badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
             }
+            updateLatestDataDateBadge();
+        }
+
+        // Parse berbagai format tanggal ke YYYY-MM-DD agar perbandingan rentang & urutan tanggal akurat
+        function parseToIsoDate(val) {
+            if (!val) return "";
+            const s = String(val).trim();
+            if (!s) return "";
+
+            // Format YYYY-MM-DD atau YYYY/MM/DD
+            const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+            if (isoMatch) {
+                const y = isoMatch[1];
+                const m = String(isoMatch[2]).padStart(2, "0");
+                const d = String(isoMatch[3]).padStart(2, "0");
+                return `${y}-${m}-${d}`;
+            }
+
+            // Format DD/MM/YYYY atau DD-MM-YYYY
+            const dmyMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+            if (dmyMatch) {
+                const d = String(dmyMatch[1]).padStart(2, "0");
+                const m = String(dmyMatch[2]).padStart(2, "0");
+                const y = dmyMatch[3];
+                return `${y}-${m}-${d}`;
+            }
+
+            const parsed = new Date(s);
+            if (!isNaN(parsed.getTime())) {
+                const p = n => String(n).padStart(2, "0");
+                return `${parsed.getFullYear()}-${p(parsed.getMonth() + 1)}-${p(parsed.getDate())}`;
+            }
+            return "";
+        }
+
+        function getLatestDatabaseDate() {
+            let latestIso = "";
+            let latestRaw = "";
+
+            if (!db || !db.sheets) return "";
+
+            TRANSACTION_SHEETS.forEach(sheetName => {
+                const rows = db.sheets[sheetName] || [];
+                rows.forEach(r => {
+                    const rawDate = r && r.TrxDate ? String(r.TrxDate).trim() : "";
+                    const iso = parseToIsoDate(rawDate);
+                    if (iso && (!latestIso || iso > latestIso)) {
+                        latestIso = iso;
+                        latestRaw = rawDate;
+                    }
+                });
+            });
+
+            return latestRaw || latestIso || "";
+        }
+
+        function updateLatestDataDateBadge() {
+            const el = document.getElementById("latest-data-date-badge");
+            if (!el) return;
+            const latest = getLatestDatabaseDate();
+            el.textContent = latest ? `Data terakhir: ${latest}` : "Data terakhir: -";
         }
 
         function showConnectionError(detailText) {
@@ -971,10 +1090,15 @@
             const desc = getFieldCI(raw, ["Description", "ItemDescription", "Item_Name", "ItemName", "Item", "ProductName", "NamaBarang", "Keterangan", "Reason"]) || "-";
             const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY", "Quantity", "Jumlah"])) || 1;
 
-            const priceVal = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price", "UnitPrice", "Harga", "HargaSatuan", "NormalPrice"]));
+            // Khusus Parked Invoice, perhatikan nominal pada kolom F maupun nama kolom nominal/harga/amount
+            const colFNominal = sheetName === "Parked Invoice"
+                ? getNominalByPositionOrName(raw, ["ColumnF", "ColF", "F", "Nominal", "Amount", "AMOUNT", "Price", "PRICE", "Total", "SubTotal", "Subtotal", "Gross", "NetAmount"], 5)
+                : 0;
+
+            const priceVal = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price", "UnitPrice", "Harga", "HargaSatuan", "NormalPrice"])) || (sheetName === "Parked Invoice" ? colFNominal : 0);
             const amountVal = parseCurrencyNumber(getFieldCI(raw, [
-                "Amount", "AMOUNT", "GrossAmount", "Total", "SubTotal", "Subtotal", "Gross"
-            ]));
+                "Amount", "AMOUNT", "GrossAmount", "Total", "SubTotal", "Subtotal", "Gross", "Nominal"
+            ])) || colFNominal;
             const discVal = Math.abs(parseCurrencyNumber(getFieldCI(raw, [
                 "Disc", "DISC", "Discount", "Diskon", "DiscAmount", "Disc_Amount",
                 "DiscManual", "Disc_Manual", "ManualDisc", "Manual_Disc",
@@ -982,7 +1106,7 @@
             ])));
             const netVal = parseCurrencyNumber(getFieldCI(raw, [
                 "NetAmount", "NETAMOUNT", "Net_Amount", "NetSales", "Net", "NetTotal", "FinalAmount", "AfterDisc", "AfterDiscount"
-            ]));
+            ])) || (sheetName === "Parked Invoice" ? Math.max(0, amountVal - discVal) : 0);
 
             const finalAmount = amountVal || (priceVal * qty) || (netVal ? netVal + discVal : 0) || 0;
             const finalPrice = priceVal || (qty ? finalAmount / qty : finalAmount);
@@ -1075,6 +1199,7 @@
                         renderTabs();
                         renderSheetView();
                     }
+                    updateLatestDataDateBadge();
                     if (notify) showToast("Data berhasil disinkronkan dari Google Sheets.", "success");
                 } finally {
                     if (spinner) spinner.classList.add("hidden");
@@ -1083,6 +1208,101 @@
             })();
 
             return activeSyncPromise;
+        }
+
+        function openExportModal() {
+            if (currentUser?.Role !== "ADMIN") return;
+            const startInput = document.getElementById("export-start-date");
+            const endInput = document.getElementById("export-end-date");
+            const latestIso = parseToIsoDate(getLatestDatabaseDate());
+
+            if (!startInput.value && !endInput.value && latestIso) {
+                startInput.value = latestIso;
+                endInput.value = latestIso;
+            }
+
+            document.getElementById("export-modal").classList.remove("hidden");
+            document.getElementById("export-modal").classList.add("flex");
+        }
+
+        function closeExportModal() {
+            document.getElementById("export-modal").classList.add("hidden");
+            document.getElementById("export-modal").classList.remove("flex");
+        }
+
+        function clearExportDateRange() {
+            document.getElementById("export-start-date").value = "";
+            document.getElementById("export-end-date").value = "";
+        }
+
+        function submitExportByDateRange(e) {
+            e.preventDefault();
+            if (currentUser?.Role !== "ADMIN") return;
+
+            const startDate = document.getElementById("export-start-date").value;
+            const endDate = document.getElementById("export-end-date").value;
+
+            if (startDate && endDate && startDate > endDate) {
+                showToast("Tanggal 'Dari Tanggal' tidak boleh melebihi 'Sampai Tanggal'.", "error");
+                return;
+            }
+
+            exportSheetToExcel(startDate, endDate);
+            closeExportModal();
+        }
+
+        function exportSheetToExcel(startDate = "", endDate = "") {
+            if (currentUser?.Role !== "ADMIN") return;
+            const wb = XLSX.utils.book_new();
+            let exportedRowCount = 0;
+
+            TRANSACTION_SHEETS.forEach(sheetName => {
+                const filteredRows = (db.sheets[sheetName] || []).filter(r => {
+                    if (!startDate && !endDate) return true;
+                    const rowIso = parseToIsoDate(r.TrxDate);
+                    if (!rowIso) return false;
+                    if (startDate && rowIso < startDate) return false;
+                    if (endDate && rowIso > endDate) return false;
+                    return true;
+                });
+
+                exportedRowCount += filteredRows.length;
+
+                const rows = filteredRows.map(r => ({
+                    TrxDate: r.TrxDate,
+                    TrxTime: r.TrxTime,
+                    RegNum: r.RegNum,
+                    TRXNUM: r.TRXNUM,
+                    SKU: r.SKU,
+                    Description: r.Description,
+                    PRICE: r.Price ?? r.Amount,
+                    Amount: r.Amount,
+                    Disc: r.Disc ?? 0,
+                    NetAmount: r.NetAmount ?? r.Amount,
+                    CashNum: r.CashNum,
+                    AuthID: r.AuthID,
+                    Remarks_Kasir: r.Remarks_Kasir,
+                    Waktu_Remarks_Kasir: r.Waktu_Remarks_Kasir,
+                    Status_Verifikasi_SPV: r.Status_Verifikasi_SPV,
+                    SPV_Verifikator_ID: r.SPV_Verifikator_ID,
+                    SPV_Verifikator_Nama: r.SPV_Verifikator_Nama,
+                    Catatan_SPV: r.Catatan_SPV,
+                    Waktu_Verifikasi_SPV: r.Waktu_Verifikasi_SPV,
+                    Paraf_TTD_Digital_SPV: r.Paraf_TTD_Digital_SPV || ""
+                }));
+                const ws = XLSX.utils.json_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+            });
+
+            const wsUsers = XLSX.utils.json_to_sheet(db.users);
+            XLSX.utils.book_append_sheet(wb, wsUsers, MASTER_USER_TAB);
+
+            const periodSuffix = (startDate || endDate)
+                ? `${startDate || "awal"}_sd_${endDate || "akhir"}`
+                : `semua_${new Date().toISOString().slice(0, 10)}`;
+
+            XLSX.writeFile(wb, `Audit_Kasir_MDS_312_${periodSuffix}.xlsx`);
+            showToast(`File .xlsx berhasil diekspor (${exportedRowCount} baris transaksi).`, "success");
         }
 
         // =====================================================
@@ -2404,6 +2624,7 @@
                 setSimulationMode(false);
             }
             updateConnectionBadge();
+            updateLatestDataDateBadge();
             updateAdminOnlyVisibility();
 
             try {
