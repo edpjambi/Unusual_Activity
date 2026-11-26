@@ -1,380 +1,1638 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Monitoring Aktivitas Kasir - Lippo PLZ MAL Jambi</title>
-  <style>
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { margin: 0; background-color: #f4f6f9; color: #1e293b; font-size: 14px; }
-    .navbar { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .navbar-brand { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-    .badge-demo { background: #38bdf8; color: #0f172a; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; font-weight: 700; }
-    .badge-admin { background: #facc15; color: #0f172a; font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; font-weight: 700; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-    .alert-info { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
-    .stat-card { background: #fff; padding: 16px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid #2563eb; }
-    .stat-card.danger { border-left-color: #dc2626; }
-    .stat-card.warning { border-left-color: #d97706; }
-    .stat-card.success { border-left-color: #059669; }
-    .stat-label { color: #64748b; font-size: 0.8rem; margin-bottom: 4px; }
-    .stat-val { font-size: 1.6rem; font-weight: 700; }
-    .text-danger { color: #dc2626; }
-    .text-warning { color: #d97706; }
-    .text-success { color: #059669; }
-    .text-muted { color: #64748b; font-size: 0.8rem; }
-    .card { background: #fff; padding: 16px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-    label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #334155; }
-    select, input, textarea { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; }
-    select:focus, input:focus, textarea:focus { outline: none; border-color: #2563eb; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 1050px; }
-    th { background: #f8fafc; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #475569; font-size: 0.8rem; white-space: nowrap; }
-    td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-    tr:hover { background: #f8fafc; }
-    .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; color: #fff; }
-    .badge-unmatch { background: #6b7280; }
-    .badge-correct { background: #0284c7; }
-    .badge-void { background: #dc2626; }
-    .badge-return { background: #d97706; }
-    .badge-duplicate { background: #7c3aed; }
-    .badge-discount { background: #059669; }
-    .badge-paraf-ok { background: #16a34a; }
-    .badge-paraf-wait { background: #fef08a; color: #854d0e; }
-    .badge-cash { background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; }
-    .btn { padding: 6px 12px; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-    .btn-success { background: #16a34a; color: #fff; }
-    .btn-success:hover:not(:disabled) { background: #15803d; }
-    .btn-danger { background: #dc2626; color: #fff; }
-    .btn-danger:hover { background: #b91c1c; }
-    .btn-outline { background: transparent; border: 1px solid #fff; color: #fff; }
-    .btn-outline-blue { background: #fff; border: 1px solid #2563eb; color: #2563eb; }
-    .btn-secondary { background: #64748b; color: #fff; }
-    .actions { display: flex; gap: 6px; white-space: nowrap; }
-    .d-none { display: none !important; }
-    .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.55); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
-    .modal-box { background: #fff; border-radius: 10px; width: 100%; max-width: 460px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-    .modal-header { padding: 14px 18px; color: #fff; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
-    .modal-body { padding: 18px; }
-    .modal-footer { padding: 12px 18px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 8px; }
-    .form-group { margin-bottom: 14px; }
-    .preview-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; font-weight: 600; margin-bottom: 14px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Kasir MDS 312 • Lippo Plaza Jambi</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS (XLSX) via CDN untuk Import & Export Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .sig-canvas {
+            touch-action: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
-<nav class="navbar">
-  <div class="navbar-brand">
-    <span>Log Aktivitas Kasir - Lippo PLZ MAL Jambi</span>
-    <span class="badge-demo">LIVE SHEET</span>
-  </div>
-  <div style="display:flex; gap:10px; align-items:center;">
-    <span id="adminBadge" class="badge-admin d-none">Admin Aktif (Tombol Hapus Muncul)</span>
-    <button id="btnAdminLogin" class="btn btn-outline" onclick="toggleAdmin()">Login Admin</button>
-  </div>
-</nav>
+    <!-- Toast Notification Container (Pengganti alert) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0 pointer-events-none"></div>
 
-<div class="container">
-  <div class="alert-info">
-    <div>
-      <strong>Panduan:</strong> Klik <b>+ Ket</b> untuk isi alasan kasir &rarr; Klik <b>Paraf</b> untuk otorisasi SPV &rarr; Klik <b>Login Admin</b> untuk memunculkan tombol <b>Hapus</b>.
-    </div>
-    <button class="btn btn-outline-blue" onclick="loadDataFromSheet()">Refresh Data</button>
-  </div>
-
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-label">Total Aktivitas</div>
-      <div class="stat-val" id="statTotal">0</div>
-    </div>
-    <div class="stat-card danger">
-      <div class="stat-label">Belum Diisi Kasir</div>
-      <div class="stat-val text-danger" id="statBelumIsi">0</div>
-    </div>
-    <div class="stat-card warning">
-      <div class="stat-label">Menunggu Paraf SPV</div>
-      <div class="stat-val text-warning" id="statBelumParaf">0</div>
-    </div>
-    <div class="stat-card success">
-      <div class="stat-label">Selesai (Sudah Diparaf)</div>
-      <div class="stat-val text-success" id="statSelesai">0</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="filter-grid">
-      <div>
-        <label>Kategori Aktivitas</label>
-        <select id="filterKategori" onchange="renderTable()">
-          <option value="">Semua Kategori (6 Laporan)</option>
-          <option value="Unmatch">Report Unmatch</option>
-          <option value="Item Correct">Item Correct</option>
-          <option value="Void">Void / Bill Cancellation</option>
-          <option value="Return">Return</option>
-          <option value="Print Duplicate">Print Duplicate</option>
-          <option value="Discount Manual">Discount Manual</option>
-        </select>
-      </div>
-      <div>
-        <label>Status Paraf</label>
-        <select id="filterStatus" onchange="renderTable()">
-          <option value="">Semua Status</option>
-          <option value="Belum Diparaf">Belum Diparaf</option>
-          <option value="Sudah Diparaf">Sudah Diparaf</option>
-        </select>
-      </div>
-      <div>
-        <label>Filter SPV Otorisasi</label>
-        <select id="filterSPV" onchange="renderTable()">
-          <option value="">Semua SPV</option>
-        </select>
-      </div>
-      <div>
-        <label>Cari (SKU / TrxNum / ID Kasir / Keterangan)</label>
-        <input type="text" id="searchInput" placeholder="Contoh: 221521, 398000, YUSRIAH..." onkeyup="renderTable()">
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Kategori</th>
-            <th>Waktu</th>
-            <th>Trx / Reg / Kassa</th>
-            <th>SKU & Qty</th>
-            <th>Nominal</th>
-            <th>Kasir ID</th>
-            <th>SPV Otorisasi</th>
-            <th>Keterangan Kasir</th>
-            <th>Status & Paraf SPV</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Keterangan Kasir -->
-<div id="modalKet" class="modal-backdrop d-none">
-  <div class="modal-box">
-    <div class="modal-header" style="background:#2563eb;">
-      <span>Input / Update Keterangan Kasir</span>
-      <button style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;" onclick="tutupModal('modalKet')">&times;</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="editId">
-      <div class="form-group">
-        <label>Nama Kasir yang Bertugas</label>
-        <input type="text" id="inputNamaKasir" placeholder="Contoh: M. Deni Akbar / Gusmarina">
-      </div>
-      <div class="form-group">
-        <label>Alasan / Keterangan Kejadian</label>
-        <textarea id="inputKeterangan" rows="3" placeholder="Jelaskan kronologi kejadian..."></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="tutupModal('modalKet')">Batal</button>
-      <button class="btn btn-primary" onclick="simpanKeterangan(event)">Simpan Keterangan</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Paraf SPV -->
-<div id="modalParaf" class="modal-backdrop d-none">
-  <div class="modal-box">
-    <div class="modal-header" style="background:#16a34a;">
-      <span>Otorisasi Paraf SPV</span>
-      <button style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;" onclick="tutupModal('modalParaf')">&times;</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="parafId">
-      <label>Keterangan yang diinput kasir:</label>
-      <div class="preview-box" id="previewKeterangan"></div>
-      <div class="form-group">
-        <label>Nama SPV yang Memaraf</label>
-        <input type="text" id="inputSpvName">
-        <div class="text-muted" style="margin-top:4px;">Otomatis terisi sesuai SPV otorisasi pada transaksi ini.</div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="tutupModal('modalParaf')">Batal</button>
-      <button class="btn btn-success" onclick="prosesParaf(event)">Konfirmasi & Paraf</button>
-    </div>
-  </div>
-</div>
-
-<script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbz77azM_SSDOHF0viET02uS_Xrll-6Gsc8ms5kVWnL-EJfbAL3C21pKulkqp6kJYbGjsg/exec";
-  let allData = [];
-  let isAdmin = false;
-
-  document.addEventListener('DOMContentLoaded', () => {
-    loadDataFromSheet();
-  });
-
-  function loadDataFromSheet() {
-    const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;">Memuat data dari Google Sheets...</td></tr>';
-
-    const callbackName = 'handleSheetData_' + Date.now();
-    const scriptEl = document.createElement('script');
-
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Timeout memuat data dari Google Sheets. Coba klik Refresh Data.</td></tr>';
-    }, 15000);
-
-    function cleanup() {
-      clearTimeout(timeoutId);
-      delete window[callbackName];
-      if (scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
-    }
-
-    window[callbackName] = function(result) {
-      cleanup();
-      if (result && result.status === 'success') {
-        allData = result.data || [];
-        populateSPVFilter();
-        refreshUI();
-      } else {
-        alert('Gagal memuat data: ' + (result && result.message ? result.message : 'Respons tidak valid'));
-      }
-    };
-
-    scriptEl.onerror = function() {
-      cleanup();
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:red;padding:20px;">Gagal memuat skrip dari Google Apps Script.</td></tr>';
-    };
-
-    const sep = GAS_URL.indexOf('?') !== -1 ? '&' : '?';
-    scriptEl.src = GAS_URL + sep + 'callback=' + callbackName;
-    document.body.appendChild(scriptEl);
-  }
-
-  async function sendToSheet(payload) {
-    try {
-      const response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-      return await response.json();
-    } catch (err) {
-      alert('Terjadi kesalahan jaringan saat menyimpan ke Google Sheets.');
-      throw err;
-    }
-  }
-
-  function refreshUI() {
-    updateStats();
-    renderTable();
-  }
-
-  function populateSPVFilter() {
-    const spvSet = new Set(allData.map(d => d.AuthName).filter(Boolean));
-    const select = document.getElementById('filterSPV');
-    select.innerHTML = '<option value="">Semua SPV</option>';
-    spvSet.forEach(spv => {
-      select.innerHTML += `<option value="${spv}">${spv}</option>`;
-    });
-  }
-
-  function updateStats() {
-    document.getElementById('statTotal').innerText = allData.length;
-    document.getElementById('statBelumIsi').innerText = allData.filter(d => !d.Keterangan_Kasir).length;
-    document.getElementById('statBelumParaf').innerText = allData.filter(d => d.Keterangan_Kasir && d.Status_Paraf !== 'Sudah Diparaf').length;
-    document.getElementById('statSelesai').innerText = allData.filter(d => d.Status_Paraf === 'Sudah Diparaf').length;
-  }
-
-  function getBadgeClass(kat) {
-    const k = (kat || '').toLowerCase();
-    if (k.includes('void')) return 'badge-void';
-    if (k.includes('return')) return 'badge-return';
-    if (k.includes('discount')) return 'badge-discount';
-    if (k.includes('correct')) return 'badge-correct';
-    if (k.includes('duplicate')) return 'badge-duplicate';
-    return 'badge-unmatch';
-  }
-
-  function formatRupiah(angka) {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
-  }
-
-  function renderTable() {
-    const fKat = document.getElementById('filterKategori').value.toLowerCase();
-    const fStat = document.getElementById('filterStatus').value;
-    const fSpv = document.getElementById('filterSPV').value;
-    const search = document.getElementById('searchInput').value.toLowerCase();
-
-    const filtered = allData.filter(row => {
-      const matchKat = !fKat || (row.Kategori || '').toLowerCase().includes(fKat);
-      const matchStat = !fStat || row.Status_Paraf === fStat;
-      const matchSpv = !fSpv || row.AuthName === fSpv;
-      const matchSearch = !search || 
-        String(row.SKU).toLowerCase().includes(search) ||
-        String(row.TrxNum).toLowerCase().includes(search) ||
-        String(row.CashNum).toLowerCase().includes(search) ||
-        String(row.Keterangan_Kasir).toLowerCase().includes(search);
-      return matchKat && matchStat && matchSpv && matchSearch;
-    });
-
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '';
-
-    filtered.forEach(row => {
-      const isParaf = row.Status_Paraf === 'Sudah Diparaf';
-      const delBtn = isAdmin ? `<button class="btn btn-danger" onclick="hapusBaris('${row.id}')">Hapus</button>` : '';
-
-      tbody.innerHTML += `
-        <tr>
-          <td><span class="badge ${getBadgeClass(row.Kategori)}">${row.Kategori}</span></td>
-          <td><div><strong>${row.Tanggal}</strong></div><div class="text-muted">${row.Jam}</div></td>
-          <td><div>Trx: <strong>${row.TrxNum}</strong></div><div class="text-muted">Reg: ${row.RegNum} | Kassa: ${row.CounterID}</div></td>
-          <td><div>${row.SKU}</div><div class="text-muted">Qty: ${row.Qty}</div></td>
-          <td><div><strong>${formatRupiah(row.Amount)}</strong></div>${row.Disc > 0 ? `<div class="text-danger" style="font-size:0.78rem;">Disc: ${formatRupiah(row.Disc)}</div>` : ''}</td> <td><span class="badge badge-cash">${row.CashNum}</span></td> <td><div><strong>${row.AuthName}</strong></div><div class="text-muted">ID: ${row.AuthID}</div></td> <td style="max-width:240px;">${row.Keterangan_Kasir ? `<span>${row.Keterangan_Kasir}</span>` : `<span class="text-danger" style="font-style:italic;font-size:0.8rem;">Belum ada keterangan</span>`}</td>
-          <td>${isParaf ? `<span class="badge badge-paraf-ok">Sudah Diparaf</span><div class="text-muted" style="margin-top:4px;">${row.Paraf_SPV}</div>` : `<span class="badge badge-paraf-wait">Menunggu Paraf</span>`}</td>
-          <td>
-            <div class="actions">
-              <button class="btn btn-primary" onclick="bukaModalKet('${row.id}')">+ Ket</button>
-              <button class="btn btn-success" onclick="bukaModalParaf('${row.id}')" ${!row.Keterangan_Kasir ? 'disabled title="Isi keterangan dulu"' : ''}>Paraf</button>
-              ${delBtn}
+    <!-- Custom Confirm Modal (Pengganti confirm) -->
+    <div id="confirm-modal" class="fixed inset-0 z-[75] hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200">
+            <h3 id="confirm-title" class="text-base font-bold text-slate-900 mb-2">Konfirmasi</h3>
+            <p id="confirm-message" class="text-sm text-slate-600 mb-6 leading-relaxed"></p>
+            <div class="flex justify-end gap-2.5">
+                <button id="confirm-cancel-btn" type="button" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Batal</button>
+                <button id="confirm-ok-btn" type="button" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 transition">Ya, Lanjutkan</button>
             </div>
-          </td>
-        </tr>
-      `;
-    });
-  }
+        </div>
+    </div>
 
-  function tutupModal(id) {
-    document.getElementById(id).classList.add('d-none');
-  }
+    <!-- ===================================================== -->
+    <!-- HEADER NAVIGASI                                       -->
+    <!-- ===================================================== -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-600 text-white font-extrabold text-sm flex items-center justify-center shadow-sm shrink-0">
+                    312
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-sm sm:text-lg font-extrabold text-slate-900 tracking-tight leading-none">Audit Kasir MDS 312</h1>
+                        <span id="conn-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            Mode Simulasi Lokal
+                        </span>
+                    </div>
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">Lippo Plaza Jambi • Store 312</p>
+                </div>
+            </div>
 
-  function bukaModalKet(id) {
-    const item = allData.find(d => String(d.id) === String(id));
-    document.getElementById('editId').value = id;
-    document.getElementById('inputNamaKasir').value = '';
-    document.getElementById('inputKeterangan').value = item.Keterangan_Kasir || '';
-    document.getElementById('modalKet').classList.remove('d-none');
-  }
+            <div class="flex items-center gap-2 sm:gap-3 ml-auto">
+                <button type="button" onclick="openConfigModal()" class="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition">
+                    Pengaturan / GitHub Guide
+                </button>
 
-  async function simpanKeterangan(e) {
-    const id = document.getElementById('editId').value;
-    const nama = document.getElementById('inputNamaKasir').value.trim();
-    const ket = document.getElementById('inputKeterangan').value.trim();
-    if (!ket) return alert('Keterangan wajib diisi!');
+                <div id="header-user-info" class="hidden items-center gap-2 pl-2 border-l border-slate-200">
+                    <div class="text-right leading-tight">
+                        <div id="header-user-name" class="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[130px] sm:max-w-[180px]"></div>
+                        <div class="flex items-center justify-end gap-1.5 mt-0.5">
+                            <span id="header-user-id" class="text-[10px] font-mono text-slate-500"></span>
+                            <span id="header-user-role" class="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-indigo-100 text-indigo-700"></span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="logoutUser()" class="px-2.5 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition">
+                        Keluar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    const teksFinal = nama ? `[${nama}] ${ket}` : ket;
-    const btn = e.target;
-    btn.disabled = true;
-    btn
+    <!-- ===================================================== -->
+    <!-- HALAMAN LOGIN                                         -->
+    <!-- ===================================================== -->
+    <section id="login-view" class="flex-1 flex items-center justify-center p-4 sm:p-6">
+        <div class="max-w-md w-full bg-white rounded-3xl shadow-lg border border-slate-200/80 p-6 sm:p-8">
+            <div class="text-center mb-6">
+                <span class="inline-block px-3 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 mb-2">
+                    Lippo Plaza Jambi • Store 312
+                </span>
+                <h2 class="text-xl font-extrabold text-slate-900">Login Audit Kasir</h2>
+                <p class="text-xs text-slate-500 mt-1">Masuk sesuai peran KASIR / SA, SPV, atau ADMIN</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">User_ID (CashNum / ID SPV / Admin)</label>
+                    <input type="text" id="login-userid" required placeholder="Contoh: 221521, 119710, atau 064593"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">PIN / Password</label>
+                    <input type="password" id="login-pin" required placeholder="Default: 123456"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+
+                <button type="submit" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-sm shadow-sm transition">
+                    Masuk ke Workspace
+                </button>
+            </form>
+
+            <!-- Akun Contoh Cepat -->
+            <div class="mt-6 pt-5 border-t border-slate-100">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 text-center">
+                    Akun Contoh Cepat (PIN: 123456)
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button type="button" onclick="fillDemoLogin('221521', '123456')" class="p-2.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 text-left transition">
+                        <span class="block text-[10px] font-extrabold text-emerald-700 uppercase">Kasir / SA</span>
+                        <span class="block text-xs font-bold text-slate-900 mt-0.5">221521</span>
+                        <span class="block text-[11px] text-slate-500 truncate">Kasir / SA 221521</span>
+                    </button>
+                    <button type="button" onclick="fillDemoLogin('119710', '123456')" class="p-2.5 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 text-left transition">
+                        <span class="block text-[10px] font-extrabold text-indigo-700 uppercase">SPV</span>
+                        <span class="block text-xs font-bold text-slate-900 mt-0.5">119710</span>
+                        <span class="block text-[11px] text-slate-500 truncate">Sri Wulandari</span>
+                    </button>
+                    <button type="button" onclick="fillDemoLogin('064593', '123456')" class="p-2.5 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/50 text-left transition">
+                        <span class="block text-[10px] font-extrabold text-rose-700 uppercase">Admin</span>
+                        <span class="block text-xs font-bold text-slate-900 mt-0.5">064593</span>
+                        <span class="block text-[11px] text-slate-500 truncate">Admin Store 312</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================== -->
+    <!-- WORKSPACE UTAMA                                       -->
+    <!-- ===================================================== -->
+    <main id="workspace-view" class="hidden flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 space-y-5">
+
+        <!-- Banner Info Role & Toolbar Admin -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div id="role-info-box" class="text-xs sm:text-sm text-slate-700"></div>
+
+            <div id="admin-actions" class="hidden flex-wrap items-center gap-2">
+                <button type="button" onclick="openUploadModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition">
+                    Upload Excel Harian (.xlsx)
+                </button>
+                <button type="button" onclick="exportSheetToExcel()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm transition">
+                    Export Sheet ke .xlsx
+                </button>
+                <button type="button" onclick="syncFromGas(true)" class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition">
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+
+        <!-- Ringkasan Statistik Sheet Aktif -->
+        <div id="stats-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+                <div class="text-[11px] font-semibold text-slate-500">Total Transaksi (Akses Anda)</div>
+                <div id="stat-total" class="text-2xl font-extrabold text-slate-900 mt-1">0</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm">
+                <div class="text-[11px] font-semibold text-amber-800">Belum Remarks Kasir</div>
+                <div id="stat-no-remarks" class="text-2xl font-extrabold text-amber-700 mt-1">0</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-sm">
+                <div class="text-[11px] font-semibold text-indigo-800">Siap / Menunggu Verifikasi SPV</div>
+                <div id="stat-waiting-spv" class="text-2xl font-extrabold text-indigo-700 mt-1">0</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-sm">
+                <div class="text-[11px] font-semibold text-emerald-800">Sudah Diverifikasi SPV</div>
+                <div id="stat-done-spv" class="text-2xl font-extrabold text-emerald-700 mt-1">0</div>
+            </div>
+        </div>
+
+        <!-- Tab 8 Sheet Transaksi + Tab Master User (Khusus Admin) -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-2">
+            <div id="tabs-bar" class="flex items-center gap-1.5 overflow-x-auto pb-1"></div>
+        </div>
+
+        <!-- Konten Sheet Transaksi -->
+        <div id="sheet-content-panel" class="space-y-4">
+            <!-- Filter & Pencarian -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <input type="text" id="filter-keyword" oninput="renderSheetView()" placeholder="Cari SKU, No Trx, Deskripsi, Remarks..."
+                        class="lg:col-span-2 px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+
+                    <select id="filter-audit-status" onchange="renderSheetView()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="ALL">Semua Status</option>
+                        <option value="NO_REMARKS">Belum Remarks Kasir</option>
+                        <option value="WAITING_SPV">Menunggu Verifikasi SPV</option>
+                        <option value="APPROVED">APPROVED</option>
+                        <option value="REJECTED">REJECTED</option>
+                    </select>
+
+                    <input type="text" id="filter-id-extra" oninput="renderSheetView()" placeholder="Filter CashNum / AuthID..."
+                        class="px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+            </div>
+
+            <!-- Tabel Desktop -->
+            <div class="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                <th class="py-3 px-3.5">Tanggal / Jam / POS</th>
+                                <th class="py-3 px-3.5">No Trx / SKU / Item</th>
+                                <th class="py-3 px-3.5 text-right">Nominal</th>
+                                <th class="py-3 px-3.5">CashNum / AuthID</th>
+                                <th class="py-3 px-3.5">Remarks_Kasir</th>
+                                <th class="py-3 px-3.5">Status, Catatan & Paraf SPV</th>
+                                <th class="py-3 px-3.5">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="desktop-tbody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Kartu Mobile -->
+            <div id="mobile-cards" class="md:hidden space-y-3"></div>
+        </div>
+
+        <!-- Konten Master User (Khusus ADMIN) -->
+        <div id="master-user-panel" class="hidden bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div>
+                    <h2 class="text-base sm:text-lg font-extrabold text-slate-900">Master User • Store 312</h2>
+                    <p class="text-xs text-slate-500">Kelola akun KASIR / SA, SPV, dan ADMIN</p>
+                </div>
+                <button type="button" onclick="openUserModal(null)" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition self-start sm:self-auto">
+                    + Tambah / Kelola User
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-600">
+                            <th class="py-3 px-3.5">User_ID</th>
+                            <th class="py-3 px-3.5">Nama_Lengkap</th>
+                            <th class="py-3 px-3.5">Role</th>
+                            <th class="py-3 px-3.5">PIN_Password</th>
+                            <th class="py-3 px-3.5">Status_Aktif</th>
+                            <th class="py-3 px-3.5 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===================================================== -->
+    <!-- FOOTER PANDUAN GITHUB PAGES                          -->
+    <!-- ===================================================== -->
+    <footer class="bg-white border-t border-slate-200 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <div>
+                <strong>Audit Kasir MDS 312</strong> (Lippo Plaza Jambi • Store 312) — Siap di-host di GitHub Pages.
+            </div>
+            <button type="button" onclick="openConfigModal('github')" class="font-bold text-indigo-600 hover:underline">
+                Panduan Upload GitHub Pages & URL Apps Script
+            </button>
+        </div>
+    </footer>
+
+    <!-- ===================================================== -->
+    <!-- MODAL 1: INPUT REMARKS KASIR                          -->
+    <!-- ===================================================== -->
+    <div id="remarks-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">Input / Perbarui Remarks Kasir</h3>
+                <button type="button" onclick="closeRemarksModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
+            </div>
+            <form onsubmit="submitRemarks(event)" class="p-5 space-y-4">
+                <div id="remarks-detail-box" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1"></div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Remarks_Kasir <span class="text-rose-500">*</span></label>
+                    <textarea id="remarks-text" rows="4" required placeholder="Tuliskan alasan/keterangan transaksi..."
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeRemarksModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">Simpan Remarks</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL 2: VERIFIKASI & PARAF / TTD DIGITAL SPV         -->
+    <!-- ===================================================== -->
+    <div id="verify-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full my-6 overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">Verifikasi & Paraf / TTD Digital SPV</h3>
+                <button type="button" onclick="closeVerifyModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
+            </div>
+            <form onsubmit="submitVerification(event)" class="p-5 space-y-4">
+                <div id="verify-detail-box" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1"></div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Status Verifikasi SPV <span class="text-rose-500">*</span></label>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="spvStatus" value="APPROVED" checked class="peer sr-only">
+                            <div class="p-2.5 rounded-xl border-2 border-slate-200 peer-checked:border-emerald-600 peer-checked:bg-emerald-50 text-center transition">
+                                <span class="block text-xs font-extrabold text-emerald-700">APPROVED</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="spvStatus" value="REJECTED" class="peer sr-only">
+                            <div class="p-2.5 rounded-xl border-2 border-slate-200 peer-checked:border-rose-600 peer-checked:bg-rose-50 text-center transition">
+                                <span class="block text-xs font-extrabold text-rose-700">REJECTED</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Catatan_SPV</label>
+                    <input type="text" id="spv-note" placeholder="Catatan pemeriksaan SPV (opsional)"
+                        class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="text-xs font-bold text-slate-700">Paraf / TTD Digital SPV <span class="text-rose-500">*</span></label>
+                        <button type="button" onclick="clearCanvas()" class="px-2.5 py-1 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100">
+                            Clear Paraf
+                        </button>
+                    </div>
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden">
+                        <canvas id="sig-canvas" width="440" height="140" class="sig-canvas w-full h-36 block cursor-crosshair"></canvas>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-1">Goreskan paraf/tanda tangan menggunakan mouse atau sentuhan jari.</p>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" onclick="closeVerifyModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm">Simpan Verifikasi & Paraf</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL 3: UPLOAD EXCEL HARIAN (ANTI DUPLIKAT)          -->
+    <!-- ===================================================== -->
+    <div id="upload-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full my-6 overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">Upload Excel Harian • Anti-Duplikat per Sheet</h3>
+                <button type="button" onclick="closeUploadModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Pilih file <strong>.xlsx</strong> aktivitas kasir harian. Setiap sheet diperiksa secara terpisah: baris transaksi yang sama persis dengan data yang sudah ada akan <strong>ditolak (rejected duplicate)</strong>.
+                </p>
+
+                <label class="block border-2 border-dashed border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 rounded-2xl p-6 text-center cursor-pointer transition">
+                    <span class="block text-xs sm:text-sm font-bold text-emerald-800">Pilih File Excel (.xlsx / .xls)</span>
+                    <span id="upload-file-name" class="block text-xs text-slate-500 mt-1">Belum ada file dipilih</span>
+                    <input type="file" id="excel-input-file" accept=".xlsx,.xls,.csv" onchange="processExcelUpload(event)" class="sr-only">
+                </label>
+
+                <div id="upload-summary-wrap" class="hidden space-y-2">
+                    <div id="upload-totals-banner" class="p-3 rounded-xl bg-slate-900 text-white text-xs font-bold flex flex-wrap justify-between gap-2"></div>
+                    <div id="upload-per-sheet-list" class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs"></div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="button" onclick="closeUploadModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-900">Selesai</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL 4: TAMBAH / EDIT MASTER USER                    -->
+    <!-- ===================================================== -->
+    <div id="user-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 id="user-modal-title" class="font-bold text-slate-900 text-sm sm:text-base">Kelola User</h3>
+                <button type="button" onclick="closeUserModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
+            </div>
+            <form onsubmit="submitUserForm(event)" class="p-5 space-y-3.5">
+                <input type="hidden" id="user-original-id" value="">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">User_ID <span class="text-rose-500">*</span></label>
+                    <input type="text" id="form-user-id" required placeholder="Contoh: 221521 atau 119710"
+                        class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nama_Lengkap <span class="text-rose-500">*</span></label>
+                    <input type="text" id="form-user-name" required placeholder="Nama lengkap user"
+                        class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Role</label>
+                    <select id="form-user-role" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="KASIR / SA">KASIR / SA</option>
+                        <option value="SPV">SPV</option>
+                        <option value="ADMIN">ADMIN</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">PIN_Password</label>
+                    <input type="text" id="form-user-pin" required value="123456"
+                        class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Status_Aktif</label>
+                    <select id="form-user-status" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="AKTIF">AKTIF</option>
+                        <option value="NONAKTIF">NONAKTIF</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeUserModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">Simpan User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL 5: PENGATURAN APPS SCRIPT & PANDUAN GITHUB PAGES -->
+    <!-- ===================================================== -->
+    <div id="config-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full my-6 overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-900 text-sm sm:text-base">Pengaturan Web App (/exec) & GitHub Pages</h3>
+                <button type="button" onclick="closeConfigModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
+            </div>
+            <div class="p-5 space-y-5 text-xs">
+                <form onsubmit="saveGasConfig(event)" class="space-y-3">
+                    <label class="block font-bold text-slate-800">URL Google Apps Script Web App (/exec)</label>
+                    <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <p class="text-[11px] text-slate-500">
+                        Kosongkan untuk menggunakan <strong>Mode Simulasi Lokal</strong>. Jika diisi, aplikasi mengirim <code>POST</code> dengan <code>Content-Type: text/plain;charset=utf-8</code> dan otomatis jatuh ke mode simulasi jika gagal/offline.
+                    </p>
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <button type="button" onclick="resetLocalDemoData()" class="px-3 py-2 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100">
+                            Reset Data Simulasi Lokal
+                        </button>
+                        <button type="submit" class="px-4 py-2 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm">
+                            Simpan URL
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Panduan Singkat GitHub Pages -->
+                <div class="pt-4 border-t border-slate-200 space-y-2 text-slate-600 leading-relaxed">
+                    <h4 class="font-extrabold text-slate-900 text-xs uppercase tracking-wider">Panduan Upload ke GitHub Pages</h4>
+                    <ol class="list-decimal pl-4 space-y-1.5">
+                        <li>Buat repository baru di GitHub (misalnya <code>audit-kasir-mds-312</code>).</li>
+                        <li>Upload file ini dengan nama <strong><code>index.html</code></strong> ke root repository, lalu commit.</li>
+                        <li>Buka <strong>Settings → Pages</strong>, pilih <strong>Branch: main</strong> dan folder <strong>/(root)</strong>, lalu klik <strong>Save</strong>.</li>
+                        <li>Akses link GitHub Pages yang muncul, lalu tempel URL Web App <code>/exec</code> pada kolom di atas.</li>
+                    </ol>
+                    <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 mt-2">
+                        <strong>Catatan Apps Script:</strong> Karena antarmuka web di-host di GitHub Pages, file <code>Index.html</code> di dalam proyek Google Apps Script <strong>bisa dihapus</strong> (cukup simpan <code>Kode.gs</code> dan deploy sebagai Web App).
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================
+        // 1. KONFIGURASI & KUNCI STORAGE
+        // =====================================================
+        const TRANSACTION_SHEETS = [
+            "Unmatch Transaksi",
+            "Parked Invoice",
+            "Item Correct",
+            "Void-Bill Cancelation",
+            "Return",
+            "Price Overide",
+            "Print Duplicate",
+            "Disc Manual"
+        ];
+        const MASTER_USER_TAB = "Master User";
+
+        const KEY_DB = "MDS312_GH_DB_V1";
+        const KEY_GAS_URL = "MDS312_GH_GAS_URL_V1";
+        const KEY_SESSION = "MDS312_GH_SESSION_V1";
+
+        function normalizeId(val) {
+            if (val === null || val === undefined) return "";
+            let s = String(val).trim().toUpperCase();
+            if (s.endsWith(".0")) s = s.slice(0, -2);
+            if (/^0*\d+$/.test(s)) {
+                const stripped = s.replace(/^0+/, "");
+                return stripped === "" ? "0" : stripped;
+            }
+            return s;
+        }
+
+        function nowString() {
+            const d = new Date();
+            const p = n => String(n).padStart(2, "0");
+            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+        }
+
+        function formatRupiah(num) {
+            const n = Number(num) || 0;
+            return "Rp " + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        // =====================================================
+        // 2. DATA SIMULASI AWAL STORE 312
+        // =====================================================
+        function createDefaultDb() {
+            return {
+                users: [
+                    { User_ID: "221521", Nama_Lengkap: "Kasir / SA 221521", Role: "KASIR / SA", PIN_Password: "123456", Status_Aktif: "AKTIF" },
+                    { User_ID: "119710", Nama_Lengkap: "Sri Wulandari", Role: "SPV", PIN_Password: "123456", Status_Aktif: "AKTIF" },
+                    { User_ID: "064593", Nama_Lengkap: "Admin Store 312", Role: "ADMIN", PIN_Password: "123456", Status_Aktif: "AKTIF" },
+                    { User_ID: "3529",   Nama_Lengkap: "Sudharmono", Role: "SPV", PIN_Password: "123456", Status_Aktif: "AKTIF" },
+                    { User_ID: "3777",   Nama_Lengkap: "Kumala Harti", Role: "KASIR / SA", PIN_Password: "123456", Status_Aktif: "AKTIF" }
+                ],
+                sheets: {
+                    "Unmatch Transaksi": [
+                        {
+                            id: "UM-1", TrxDate: "2026-11-27", TrxTime: "09:15:10", RegNum: "POS-01",
+                            TRXNUM: "TRX-90011", SKU: "8991100201", Description: "Kemeja Formal Lengan Panjang",
+                            Amount: 259000, CashNum: "221521", AuthID: "119710",
+                            Remarks_Kasir: "", Waktu_Remarks_Kasir: "",
+                            Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
+                            Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
+                        },
+                        {
+                            id: "UM-2", TrxDate: "2026-11-27", TrxTime: "10:42:05", RegNum: "POS-02",
+                            TRXNUM: "TRX-90045", SKU: "8994400812", Description: "Tas Ransel Kanvas Hitam",
+                            Amount: 319000, CashNum: "221521", AuthID: "119710",
+                            Remarks_Kasir: "Jaringan EDC sempat timeout, transaksi sukses di percobaan kedua.",
+                            Waktu_Remarks_Kasir: "2026-11-27 11:00:00",
+                            Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
+                            Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
+                        }
+                    ],
+                    "Parked Invoice": [
+                        {
+                            id: "PK-1", TrxDate: "2026-11-27", TrxTime: "11:12:30", RegNum: "POS-01",
+                            TRXNUM: "PRK-201", SKU: "8992200310", Description: "Gamis Motif M",
+                            Amount: 369000, CashNum: "221521", AuthID: "119710",
+                            Remarks_Kasir: "", Waktu_Remarks_Kasir: "",
+                            Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
+                            Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
+                        }
+                    ],
+                    "Item Correct": [
+                        {
+                            id: "IC-1", TrxDate: "2026-11-27", TrxTime: "12:05:19", RegNum: "POS-03",
+                            TRXNUM: "TRX-90102", SKU: "8995500119", Description: "Celana Jeans Slimfit 31",
+                            Amount: 289000, CashNum: "221521", AuthID: "119710",
+                            Remarks_Kasir: "Salah scan barcode size L, dikoreksi ke size M.",
+                            Waktu_Remarks_Kasir: "2026-11-27 12:15:00",
+                            Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
+                            Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
+                        }
+                    ],
+                    "Void-Bill Cancelation": [
+                        {
+                            id: "VB-1", TrxDate: "2026-11-27", TrxTime: "13:20:44", RegNum: "POS-01",
+                            TRXNUM: "0", SKU: "8996600701", Description: "VOID - Dompet Pria Coklat",
+                            Amount: 179000, CashNum: "221521", AuthID: "119710",
+                            Remarks_Kasir: "", Waktu_Remarks_Kasir: "",
+                            Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
+                            Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
+                        }
+                    ],
+                    "Return": [],
+                    "Price Overide": [],
+                    "Print Duplicate": [],
+                    "Disc Manual": []
+                }
+            };
+        }
+
+        let db = loadDb();
+        let currentUser = null;
+        let activeTab = TRANSACTION_SHEETS[0];
+        let activeActionTarget = null; // { sheetName, trxId }
+        let hasSigDrawn = false;
+
+        function loadDb() {
+            try {
+                const raw = localStorage.getItem(KEY_DB);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.users && parsed.sheets) return parsed;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+            const fresh = createDefaultDb();
+            saveDb(fresh);
+            return fresh;
+        }
+
+        function saveDb(obj = db) {
+            try {
+                localStorage.setItem(KEY_DB, JSON.stringify(obj));
+            } catch (e) {
+                showToast("Gagal menyimpan ke localStorage.", "error");
+            }
+        }
+
+        function getGasUrl() {
+            return (localStorage.getItem(KEY_GAS_URL) || "").trim();
+        }
+
+        function updateConnectionStatus(onlineSuccess = null) {
+            const badge = document.getElementById("conn-status-badge");
+            const url = getGasUrl();
+            if (!url) {
+                badge.textContent = "Mode Simulasi Lokal";
+                badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200";
+                return;
+            }
+            if (onlineSuccess === false) {
+                badge.textContent = "Fallback Simulasi Lokal";
+                badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200";
+            } else {
+                badge.textContent = "Apps Script Terhubung";
+                badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+            }
+        }
+
+        // Komunikasi ke Google Apps Script via fetch POST (text/plain;charset=utf-8) dengan fallback ke simulasi lokal
+        async function postToAppsScript(payload) {
+            const url = getGasUrl();
+            if (!url) {
+                updateConnectionStatus(null);
+                return { simulated: true, ok: true };
+            }
+            try {
+                const resp = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                if (!resp.ok) throw new Error("HTTP " + resp.status);
+                const json = await resp.json();
+                updateConnectionStatus(true);
+                return { simulated: false, ok: json.ok !== false, data: json };
+            } catch (err) {
+                console.warn("GAS fetch gagal, fallback ke simulasi lokal:", err);
+                updateConnectionStatus(false);
+                return { simulated: true, ok: true, fallback: true };
+            }
+        }
+
+        async function syncFromGas(notify = false) {
+            const url = getGasUrl();
+            if (!url) {
+                if (notify) showToast("Mode Simulasi Lokal aktif (belum ada URL Apps Script).", "info");
+                return;
+            }
+            const res = await postToAppsScript({
+                action: "getInitialData",
+                role: currentUser ? currentUser.Role : "",
+                userId: currentUser ? currentUser.User_ID : ""
+            });
+            if (!res.simulated && res.data) {
+                if (Array.isArray(res.data.users) && res.data.users.length > 0) {
+                    db.users = res.data.users.map(u => ({
+                        User_ID: String(u.userId || u.User_ID || ""),
+                        Nama_Lengkap: String(u.nama || u.Nama_Lengkap || ""),
+                        Role: String(u.role || u.Role || "KASIR / SA"),
+                        PIN_Password: String(u.pin || u.PIN_Password || "123456"),
+                        Status_Aktif: String(u.status || u.Status_Aktif || "AKTIF")
+                    }));
+                }
+                if (res.data.sheetsData && typeof res.data.sheetsData === "object") {
+                    TRANSACTION_SHEETS.forEach(sName => {
+                        if (Array.isArray(res.data.sheetsData[sName])) {
+                            db.sheets[sName] = res.data.sheetsData[sName];
+                        }
+                    });
+                }
+                saveDb();
+                renderTabs();
+                renderSheetView();
+                if (notify) showToast("Data tersinkronisasi dari Google Sheets.", "success");
+            } else if (notify) {
+                showToast("Menampilkan data lokal (fallback/simulasi).", "info");
+            }
+        }
+
+        // =====================================================
+        // 3. TOAST & CUSTOM CONFIRM
+        // =====================================================
+        function showToast(msg, type = "success") {
+            const container = document.getElementById("toast-container");
+            const el = document.createElement("div");
+            const cls = type === "error"
+                ? "bg-rose-600 text-white"
+                : (type === "info" ? "bg-slate-800 text-white" : "bg-emerald-600 text-white");
+            el.className = `${cls} px-4 py-3 rounded-xl shadow-lg text-xs sm:text-sm font-semibold pointer-events-auto transition-opacity duration-300`;
+            el.textContent = msg;
+            container.appendChild(el);
+            setTimeout(() => {
+                el.style.opacity = "0";
+                setTimeout(() => el.remove(), 250);
+            }, 3000);
+        }
+
+        function askConfirm(title, message, onYes) {
+            const modal = document.getElementById("confirm-modal");
+            document.getElementById("confirm-title").textContent = title;
+            document.getElementById("confirm-message").textContent = message;
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+
+            const okBtn = document.getElementById("confirm-ok-btn");
+            const cancelBtn = document.getElementById("confirm-cancel-btn");
+            const cleanup = () => {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+                okBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+            cancelBtn.onclick = cleanup;
+            okBtn.onclick = () => {
+                cleanup();
+                onYes();
+            };
+        }
+
+        // =====================================================
+        // 4. LOGIN & LOGOUT
+        // =====================================================
+        function fillDemoLogin(uid, pin) {
+            document.getElementById("login-userid").value = uid;
+            document.getElementById("login-pin").value = pin;
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const uid = document.getElementById("login-userid").value.trim();
+            const pin = document.getElementById("login-pin").value.trim();
+
+            const user = db.users.find(u =>
+                normalizeId(u.User_ID) === normalizeId(uid) &&
+                String(u.PIN_Password).trim() === pin
+            );
+
+            if (!user) {
+                showToast("User_ID atau PIN/Password salah.", "error");
+                return;
+            }
+            if (String(user.Status_Aktif).toUpperCase() !== "AKTIF") {
+                showToast("Akun tidak aktif.", "error");
+                return;
+            }
+
+            currentUser = user;
+            localStorage.setItem(KEY_SESSION, JSON.stringify(user));
+            showWorkspace();
+            syncFromGas(false);
+            showToast(`Login berhasil: ${user.Nama_Lengkap} (${user.Role})`, "success");
+        }
+
+        function logoutUser() {
+            currentUser = null;
+            localStorage.removeItem(KEY_SESSION);
+            document.getElementById("workspace-view").classList.add("hidden");
+            document.getElementById("header-user-info").classList.add("hidden");
+            document.getElementById("header-user-info").classList.remove("flex");
+            document.getElementById("login-view").classList.remove("hidden");
+        }
+
+        function showWorkspace() {
+            document.getElementById("login-view").classList.add("hidden");
+            document.getElementById("workspace-view").classList.remove("hidden");
+
+            const uBox = document.getElementById("header-user-info");
+            uBox.classList.remove("hidden");
+            uBox.classList.add("flex");
+            document.getElementById("header-user-name").textContent = currentUser.Nama_Lengkap;
+            document.getElementById("header-user-id").textContent = `ID: ${currentUser.User_ID}`;
+            document.getElementById("header-user-role").textContent = currentUser.Role;
+
+            const infoBox = document.getElementById("role-info-box");
+            const adminBar = document.getElementById("admin-actions");
+
+            if (currentUser.Role === "KASIR / SA") {
+                adminBar.classList.add("hidden");
+                adminBar.classList.remove("flex");
+                infoBox.innerHTML = `<span class="font-bold text-emerald-700">Role KASIR / SA:</span> Menampilkan baris dengan <strong>CashNum = ${currentUser.User_ID}</strong>. Silakan isi <strong>Remarks_Kasir</strong> agar dapat diverifikasi SPV.`;
+            } else if (currentUser.Role === "SPV") {
+                adminBar.classList.add("hidden");
+                adminBar.classList.remove("flex");
+                infoBox.innerHTML = `<span class="font-bold text-indigo-700">Role SPV:</span> Menampilkan baris dengan <strong>AuthID = ${currentUser.User_ID}</strong>. Tombol Verifikasi terbuka setelah <strong>Remarks_Kasir</strong> terisi.`;
+            } else {
+                adminBar.classList.remove("hidden");
+                adminBar.classList.add("flex");
+                infoBox.innerHTML = `<span class="font-bold text-rose-700">Role ADMIN:</span> Akses penuh seluruh sheet transaksi, upload Excel harian (anti-duplikat per sheet), export .xlsx, dan kelola Master User.`;
+            }
+
+            if (activeTab === MASTER_USER_TAB && currentUser.Role !== "ADMIN") {
+                activeTab = TRANSACTION_SHEETS[0];
+            }
+
+            renderTabs();
+            renderSheetView();
+        }
+
+        // =====================================================
+        // 5. TABS, HAK AKSES BARIS & RENDER
+        // =====================================================
+        function getVisibleRowsForSheet(sheetName) {
+            const list = db.sheets[sheetName] || [];
+            if (!currentUser) return [];
+            const myId = normalizeId(currentUser.User_ID);
+
+            if (currentUser.Role === "KASIR / SA") {
+                return list.filter(r => normalizeId(r.CashNum) === myId);
+            }
+            if (currentUser.Role === "SPV") {
+                return list.filter(r => normalizeId(r.AuthID) === myId);
+            }
+            return list; // ADMIN
+        }
+
+        function renderTabs() {
+            const bar = document.getElementById("tabs-bar");
+            const tabs = [...TRANSACTION_SHEETS];
+            if (currentUser && currentUser.Role === "ADMIN") {
+                tabs.push(MASTER_USER_TAB);
+            }
+
+            bar.innerHTML = tabs.map(tab => {
+                const active = activeTab === tab;
+                const count = tab === MASTER_USER_TAB ? db.users.length : getVisibleRowsForSheet(tab).length;
+                return `
+                    <button type="button" onclick="switchTab('${tab.replace(/'/g, "\\'")}')"
+                        class="px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
+                            active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                        }">
+                        <span>${tab}</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] ${active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"}">${count}</span>
+                    </button>
+                `;
+            }).join("");
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            renderTabs();
+            renderSheetView();
+        }
+
+        function getStatusBadge(row) {
+            const remarksFilled = Boolean((row.Remarks_Kasir || "").trim());
+            const st = String(row.Status_Verifikasi_SPV || "PENDING").toUpperCase();
+
+            if (st === "APPROVED") {
+                return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">APPROVED</span>`;
+            }
+            if (st === "REJECTED") {
+                return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800">REJECTED</span>`;
+            }
+            if (!remarksFilled) {
+                return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800">Belum Remarks</span>`;
+            }
+            return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800">Menunggu SPV</span>`;
+        }
+
+        function renderStats(rows) {
+            const total = rows.length;
+            const noRemarks = rows.filter(r => !(r.Remarks_Kasir || "").trim() && (r.Status_Verifikasi_SPV || "PENDING") === "PENDING").length;
+            const waitingSpv = rows.filter(r => Boolean((r.Remarks_Kasir || "").trim()) && (r.Status_Verifikasi_SPV || "PENDING") === "PENDING").length;
+            const doneSpv = rows.filter(r => ["APPROVED", "REJECTED"].includes(String(r.Status_Verifikasi_SPV || "").toUpperCase())).length;
+
+            document.getElementById("stat-total").textContent = total;
+            document.getElementById("stat-no-remarks").textContent = noRemarks;
+            document.getElementById("stat-waiting-spv").textContent = waitingSpv;
+            document.getElementById("stat-done-spv").textContent = doneSpv;
+        }
+
+        function buildRowActionsHtml(row) {
+            const role = currentUser.Role;
+            const hasRemarks = Boolean((row.Remarks_Kasir || "").trim());
+            const isCashOwner = normalizeId(row.CashNum) === normalizeId(currentUser.User_ID);
+            const isSpvOwner = normalizeId(row.AuthID) === normalizeId(currentUser.User_ID);
+
+            let parts = [];
+
+            if ((role === "KASIR / SA" && isCashOwner) || role === "ADMIN") {
+                parts.push(`
+                    <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${row.id}')"
+                        class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
+                        ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
+                    </button>
+                `);
+            }
+
+            if (role === "SPV" && isSpvOwner) {
+                if (!hasRemarks) {
+                    parts.push(`
+                        <button type="button" disabled
+                            class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed">
+                            Menunggu Remarks Kasir dulu
+                        </button>
+                    `);
+                } else {
+                    parts.push(`
+                        <button type="button" onclick="openVerifyModal('${activeTab.replace(/'/g, "\\'")}', '${row.id}')"
+                            class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition">
+                            Verifikasi & Paraf
+                        </button>
+                    `);
+                }
+            }
+
+            return `<div class="flex flex-wrap items-center gap-1.5">${parts.join("")}</div>`;
+        }
+
+        function renderSheetView() {
+            if (activeTab === MASTER_USER_TAB && currentUser?.Role === "ADMIN") {
+                document.getElementById("sheet-content-panel").classList.add("hidden");
+                document.getElementById("master-user-panel").classList.remove("hidden");
+                document.getElementById("stats-grid").classList.add("hidden");
+                renderUsersTable();
+                return;
+            }
+
+            document.getElementById("master-user-panel").classList.add("hidden");
+            document.getElementById("sheet-content-panel").classList.remove("hidden");
+            document.getElementById("stats-grid").classList.remove("hidden");
+
+            const baseRows = getVisibleRowsForSheet(activeTab);
+            renderStats(baseRows);
+
+            const kw = (document.getElementById("filter-keyword").value || "").trim().toLowerCase();
+            const stFilter = document.getElementById("filter-audit-status").value;
+            const extraId = normalizeId(document.getElementById("filter-id-extra").value);
+
+            const rows = baseRows.filter(r => {
+                const hasRemarks = Boolean((r.Remarks_Kasir || "").trim());
+                const status = String(r.Status_Verifikasi_SPV || "PENDING").toUpperCase();
+
+                if (stFilter === "NO_REMARKS" && (hasRemarks || status !== "PENDING")) return false;
+                if (stFilter === "WAITING_SPV" && (!hasRemarks || status !== "PENDING")) return false;
+                if (stFilter === "APPROVED" && status !== "APPROVED") return false;
+                if (stFilter === "REJECTED" && status !== "REJECTED") return false;
+
+                if (extraId) {
+                    const matchCash = normalizeId(r.CashNum).includes(extraId);
+                    const matchAuth = normalizeId(r.AuthID).includes(extraId);
+                    if (!matchCash && !matchAuth) return false;
+                }
+
+                if (kw) {
+                    const hay = `${r.TRXNUM} ${r.SKU} ${r.Description} ${r.RegNum} ${r.CashNum} ${r.AuthID} ${r.Remarks_Kasir} ${r.Catatan_SPV}`.toLowerCase();
+                    if (!hay.includes(kw)) return false;
+                }
+                return true;
+            });
+
+            const tbody = document.getElementById("desktop-tbody");
+            const cards = document.getElementById("mobile-cards");
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400">Tidak ada baris transaksi pada sheet <strong>${activeTab}</strong>.</td></tr>`;
+                cards.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-400">Tidak ada baris transaksi pada sheet <strong>${activeTab}</strong>.</div>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(r => {
+                const sigImg = r.Paraf_TTD_Digital_SPV
+                    ? `<img src="${r.Paraf_TTD_Digital_SPV}" alt="Paraf SPV" class="h-8 w-20 object-contain border border-slate-200 rounded bg-white p-0.5 mt-1">`
+                    : `<span class="text-[10px] text-slate-400 block mt-0.5">Belum ada paraf</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50/80 align-top">
+                        <td class="py-3 px-3.5 whitespace-nowrap">
+                            <div class="font-bold text-slate-900">${r.TrxDate || "-"}</div>
+                            <div class="text-[11px] text-slate-500">${r.TrxTime || ""} • <span class="font-semibold text-indigo-600">${r.RegNum || "-"}</span></div>
+                        </td>
+                        <td class="py-3 px-3.5">
+                            <div class="font-mono font-bold text-slate-900">${r.TRXNUM || "-"} <span class="text-slate-300">|</span> ${r.SKU || "-"}</div>
+                            <div class="text-slate-600 mt-0.5">${r.Description || "-"}</div>
+                        </td>
+                        <td class="py-3 px-3.5 text-right font-bold text-slate-900 whitespace-nowrap">${formatRupiah(r.Amount)}</td>
+                        <td class="py-3 px-3.5 whitespace-nowrap">
+                            <div class="text-[11px]">CashNum: <strong class="font-mono">${r.CashNum || "-"}</strong></div>
+                            <div class="text-[11px]">AuthID: <strong class="font-mono text-indigo-700">${r.AuthID || "-"}</strong></div>
+                        </td>
+                        <td class="py-3 px-3.5 max-w-[220px]">
+                            ${(r.Remarks_Kasir || "").trim()
+                                ? `<div class="text-slate-800 font-medium break-words">${r.Remarks_Kasir}</div><div class="text-[10px] text-slate-400 mt-0.5">${r.Waktu_Remarks_Kasir || ""}</div>`
+                                : `<span class="text-[11px] italic text-amber-600">Belum diisi kasir</span>`}
+                        </td>
+                        <td class="py-3 px-3.5">
+                            ${getStatusBadge(r)}
+                            ${r.SPV_Verifikator_Nama ? `<div class="text-[10px] text-slate-500 mt-1">SPV: <strong>${r.SPV_Verifikator_Nama}</strong> (${r.Waktu_Verifikasi_SPV || ""})</div>` : ""}
+                            ${r.Catatan_SPV ? `<div class="text-[10px] text-slate-600 italic mt-0.5">"${r.Catatan_SPV}"</div>` : ""}
+                            ${sigImg}
+                        </td>
+                        <td class="py-3 px-3.5 whitespace-nowrap">${buildRowActionsHtml(r)}</td>
+                    </tr>
+                `;
+            }).join("");
+
+            cards.innerHTML = rows.map(r => {
+                const sigImg = r.Paraf_TTD_Digital_SPV
+                    ? `<img src="${r.Paraf_TTD_Digital_SPV}" alt="Paraf SPV" class="h-9 w-24 object-contain border border-slate-200 rounded bg-white p-0.5">`
+                    : "";
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">${r.RegNum || "POS"} • ${r.TrxDate || ""} ${r.TrxTime || ""}</span>
+                                <div class="font-mono font-extrabold text-xs text-slate-900 mt-1.5">Trx: ${r.TRXNUM || "-"} | SKU: ${r.SKU || "-"}</div>
+                                <div class="text-xs text-slate-600">${r.Description || "-"}</div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <div class="text-xs font-extrabold text-slate-900">${formatRupiah(r.Amount)}</div>
+                                <div class="mt-1">${getStatusBadge(r)}</div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between text-[11px] bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                            <span>CashNum: <strong class="font-mono">${r.CashNum || "-"}</strong></span>
+                            <span>AuthID: <strong class="font-mono text-indigo-700">${r.AuthID || "-"}</strong></span>
+                        </div>
+
+                        <div class="text-xs">
+                            <span class="font-bold text-slate-700 block mb-0.5">Remarks_Kasir:</span>
+                            ${(r.Remarks_Kasir || "").trim()
+                                ? `<div class="p-2 rounded-lg bg-indigo-50/40 border border-indigo-100 text-slate-800">${r.Remarks_Kasir}</div>`
+                                : `<span class="text-amber-600 italic text-[11px]">Belum diisi kasir</span>`}
+                        </div>
+
+                        ${(r.SPV_Verifikator_Nama || r.Catatan_SPV || r.Paraf_TTD_Digital_SPV) ? `
+                            <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]">
+                                <div>
+                                    ${r.SPV_Verifikator_Nama ? `<div class="font-bold text-slate-700">${r.SPV_Verifikator_Nama}</div>` : ""}
+                                    ${r.Catatan_SPV ? `<div class="text-slate-500 italic">"${r.Catatan_SPV}"</div>` : ""}
+                                </div>
+                                ${sigImg}
+                            </div>
+                        ` : ""}
+
+                        <div class="pt-2 border-t border-slate-100">
+                            ${buildRowActionsHtml(r)}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // =====================================================
+        // 6. MODAL & AKSI REMARKS KASIR
+        // =====================================================
+        function openRemarksModal(sheetName, trxId) {
+            const row = (db.sheets[sheetName] || []).find(r => r.id === trxId);
+            if (!row) return;
+            activeActionTarget = { sheetName, trxId };
+
+            document.getElementById("remarks-detail-box").innerHTML = `
+                <div><strong>Sheet:</strong> ${sheetName} • <strong>Trx:</strong> ${row.TRXNUM} • <strong>SKU:</strong> ${row.SKU}</div>
+                <div><strong>Item:</strong> ${row.Description} (${formatRupiah(row.Amount)})</div>
+                <div><strong>CashNum:</strong> ${row.CashNum} • <strong>AuthID SPV:</strong> ${row.AuthID}</div>
+            `;
+            document.getElementById("remarks-text").value = row.Remarks_Kasir || "";
+            document.getElementById("remarks-modal").classList.remove("hidden");
+            document.getElementById("remarks-modal").classList.add("flex");
+            document.getElementById("remarks-text").focus();
+        }
+
+        function closeRemarksModal() {
+            activeActionTarget = null;
+            document.getElementById("remarks-modal").classList.add("hidden");
+            document.getElementById("remarks-modal").classList.remove("flex");
+        }
+
+        async function submitRemarks(e) {
+            e.preventDefault();
+            if (!activeActionTarget) return;
+            const text = document.getElementById("remarks-text").value.trim();
+            if (!text) {
+                showToast("Remarks_Kasir wajib diisi.", "error");
+                return;
+            }
+
+            const { sheetName, trxId } = activeActionTarget;
+            const row = (db.sheets[sheetName] || []).find(r => r.id === trxId);
+            if (!row) return;
+
+            const waktu = nowString();
+            row.Remarks_Kasir = text;
+            row.Waktu_Remarks_Kasir = waktu;
+            if (!row.Status_Verifikasi_SPV) row.Status_Verifikasi_SPV = "PENDING";
+
+            saveDb();
+            await postToAppsScript({
+                action: "saveRemarks",
+                sheetName,
+                trxId,
+                CashNum: row.CashNum,
+                Remarks_Kasir: text,
+                Waktu_Remarks_Kasir: waktu,
+                actorId: currentUser.User_ID
+            });
+
+            closeRemarksModal();
+            renderTabs();
+            renderSheetView();
+            showToast("Remarks kasir tersimpan.", "success");
+        }
+
+        // =====================================================
+        // 7. MODAL & AKSI VERIFIKASI + PARAF DIGITAL SPV
+        // =====================================================
+        let canvasEl = null;
+        let ctxEl = null;
+        let drawing = false;
+
+        function initSignaturePad() {
+            canvasEl = document.getElementById("sig-canvas");
+            if (!canvasEl) return;
+            ctxEl = canvasEl.getContext("2d");
+            ctxEl.lineWidth = 2.5;
+            ctxEl.lineCap = "round";
+            ctxEl.lineJoin = "round";
+            ctxEl.strokeStyle = "#0f172a";
+
+            const getPoint = (evt) => {
+                const rect = canvasEl.getBoundingClientRect();
+                const sx = canvasEl.width / rect.width;
+                const sy = canvasEl.height / rect.height;
+                const cx = evt.touches ? evt.touches[0].clientX : evt.clientX;
+                const cy = evt.touches ? evt.touches[0].clientY : evt.clientY;
+                return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy };
+            };
+
+            const onStart = (evt) => {
+                evt.preventDefault();
+                drawing = true;
+                const pt = getPoint(evt);
+                ctxEl.beginPath();
+                ctxEl.moveTo(pt.x, pt.y);
+            };
+
+            const onMove = (evt) => {
+                if (!drawing) return;
+                evt.preventDefault();
+                const pt = getPoint(evt);
+                ctxEl.lineTo(pt.x, pt.y);
+                ctxEl.stroke();
+                hasSigDrawn = true;
+            };
+
+            const onEnd = () => {
+                if (!drawing) return;
+                drawing = false;
+                ctxEl.closePath();
+            };
+
+            canvasEl.addEventListener("mousedown", onStart);
+            canvasEl.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onEnd);
+
+            canvasEl.addEventListener("touchstart", onStart, { passive: false });
+            canvasEl.addEventListener("touchmove", onMove, { passive: false });
+            window.addEventListener("touchend", onEnd);
+        }
+
+        function clearCanvas() {
+            if (ctxEl && canvasEl) {
+                ctxEl.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            }
+            hasSigDrawn = false;
+        }
+
+        function openVerifyModal(sheetName, trxId) {
+            if (currentUser.Role !== "SPV") {
+                showToast("Hanya SPV yang dapat memverifikasi.", "error");
+                return;
+            }
+            const row = (db.sheets[sheetName] || []).find(r => r.id === trxId);
+            if (!row) return;
+
+            if (normalizeId(row.AuthID) !== normalizeId(currentUser.User_ID)) {
+                showToast("AuthID transaksi tidak sesuai dengan ID SPV Anda.", "error");
+                return;
+            }
+            if (!(row.Remarks_Kasir || "").trim()) {
+                showToast("Menunggu Remarks Kasir dulu sebelum verifikasi SPV.", "error");
+                return;
+            }
+
+            activeActionTarget = { sheetName, trxId };
+            document.getElementById("verify-detail-box").innerHTML = `
+                <div><strong>Sheet:</strong> ${sheetName} • <strong>Trx:</strong> ${row.TRXNUM} • <strong>SKU:</strong> ${row.SKU}</div>
+                <div><strong>CashNum:</strong> ${row.CashNum} • <strong>Nominal:</strong> ${formatRupiah(row.Amount)}</div>
+                <div class="mt-1 pt-1 border-t border-slate-200"><strong>Remarks_Kasir:</strong> <span class="text-indigo-800 font-semibold">${row.Remarks_Kasir}</span></div>
+            `;
+
+            const targetStatus = String(row.Status_Verifikasi_SPV).toUpperCase() === "REJECTED" ? "REJECTED" : "APPROVED";
+            document.querySelectorAll('input[name="spvStatus"]').forEach(radio => {
+                radio.checked = (radio.value === targetStatus);
+            });
+            document.getElementById("spv-note").value = row.Catatan_SPV || "";
+
+            clearCanvas();
+            if (row.Paraf_TTD_Digital_SPV && row.Paraf_TTD_Digital_SPV.startsWith("data:image")) {
+                const img = new Image();
+                img.onload = () => {
+                    ctxEl.drawImage(img, 0, 0, canvasEl.width, canvasEl.height);
+                    hasSigDrawn = true;
+                };
+                img.src = row.Paraf_TTD_Digital_SPV;
+            }
+
+            document.getElementById("verify-modal").classList.remove("hidden");
+            document.getElementById("verify-modal").classList.add("flex");
+        }
+
+        function closeVerifyModal() {
+            activeActionTarget = null;
+            document.getElementById("verify-modal").classList.add("hidden");
+            document.getElementById("verify-modal").classList.remove("flex");
+        }
+
+        async function submitVerification(e) {
+            e.preventDefault();
+            if (!activeActionTarget) return;
+
+            const row = (db.sheets[activeActionTarget.sheetName] || []).find(r => r.id === activeActionTarget.trxId);
+            if (!row || !(row.Remarks_Kasir || "").trim()) {
+                showToast("Remarks_Kasir wajib ada sebelum verifikasi SPV.", "error");
+                return;
+            }
+            if (!hasSigDrawn) {
+                showToast("Mohon gambar Paraf / TTD Digital SPV terlebih dahulu.", "error");
+                return;
+            }
+
+            const chosen = document.querySelector('input[name="spvStatus"]:checked')?.value || "APPROVED";
+            const note = document.getElementById("spv-note").value.trim();
+            const sigDataUrl = canvasEl.toDataURL("image/png");
+            const waktu = nowString();
+
+            row.Status_Verifikasi_SPV = chosen;
+            row.SPV_Verifikator_ID = currentUser.User_ID;
+            row.SPV_Verifikator_Nama = currentUser.Nama_Lengkap;
+            row.Catatan_SPV = note;
+            row.Paraf_TTD_Digital_SPV = sigDataUrl;
+            row.Waktu_Verifikasi_SPV = waktu;
+
+            saveDb();
+            await postToAppsScript({
+                action: "saveVerification",
+                sheetName: activeActionTarget.sheetName,
+                trxId: row.id,
+                AuthID: row.AuthID,
+                status: chosen,
+                spvId: currentUser.User_ID,
+                spvName: currentUser.Nama_Lengkap,
+                catatanSpv: note,
+                signatureBase64: sigDataUrl,
+                waktuVerifikasi: waktu
+            });
+
+            closeVerifyModal();
+            renderTabs();
+            renderSheetView();
+            showToast(`Verifikasi ${chosen} & paraf digital tersimpan.`, "success");
+        }
+
+        // =====================================================
+        // 8. UPLOAD EXCEL HARIAN (ANTI DUPLIKAT) & EXPORT .XLSX
+        // =====================================================
+        function openUploadModal() {
+            if (currentUser?.Role !== "ADMIN") return;
+            document.getElementById("excel-input-file").value = "";
+            document.getElementById("upload-file-name").textContent = "Belum ada file dipilih";
+            document.getElementById("upload-summary-wrap").classList.add("hidden");
+            document.getElementById("upload-modal").classList.remove("hidden");
+            document.getElementById("upload-modal").classList.add("flex");
+        }
+
+        function closeUploadModal() {
+            document.getElementById("upload-modal").classList.add("hidden");
+            document.getElementById("upload-modal").classList.remove("flex");
+        }
+
+        function buildRowUniqueKey(sheetName, item) {
+            const dt = String(item.TrxDate || "").trim();
+            const tm = String(item.TrxTime || "").trim();
+            const reg = normalizeId(item.RegNum || "");
+            const trx = String(item.TRXNUM || "").trim().toUpperCase();
+            const sku = String(item.SKU || "").trim().toUpperCase();
+            const cash = normalizeId(item.CashNum || "");
+            const desc = String(item.Description || "").trim().toUpperCase();
+
+            if (sheetName === "Void-Bill Cancelation") {
+                return `${sheetName}|${dt}|${tm}|${reg}|${sku}|${cash}|${desc}`;
+            }
+            return `${sheetName}|${dt}|${tm}|${reg}|${trx}|${sku}|${cash}`;
+        }
+
+        function processExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById("upload-file-name").textContent = file.name;
+
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const bytes = new Uint8Array(ev.target.result);
+                    const wb = XLSX.read(bytes, { type: "array" });
+
+                    let grandAdded = 0;
+                    let grandRejected = 0;
+                    const batchToSync = {};
+                    const itemsHtml = [];
+
+                    for (const sheetName of TRANSACTION_SHEETS) {
+                        const matchedName = wb.SheetNames.find(n => n.trim().toLowerCase() === sheetName.toLowerCase());
+                        if (!matchedName) {
+                            itemsHtml.push(`
+                                <div class="p-3 flex items-center justify-between bg-slate-50">
+                                    <span class="font-bold text-slate-600">${sheetName}</span>
+                                    <span class="text-slate-400 italic">Sheet tidak ditemukan di file</span>
+                                </div>
+                            `);
+                            continue;
+                        }
+
+                        const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[matchedName], { defval: "" });
+                        if (!Array.isArray(db.sheets[sheetName])) db.sheets[sheetName] = [];
+
+                        const existingKeys = new Set(db.sheets[sheetName].map(r => buildRowUniqueKey(sheetName, r)));
+                        let added = 0;
+                        let rejected = 0;
+                        const sheetAddedList = [];
+
+                        rawRows.forEach((raw, idx) => {
+                            const rec = {
+                                id: `${sheetName.slice(0, 2).toUpperCase()}-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+                                TrxDate: String(raw.TrxDate || raw.TRXDATE || raw.Date || "").trim(),
+                                TrxTime: String(raw.TrxTime || raw.CreateTime || raw.Time || "").trim(),
+                                RegNum: String(raw.RegNum || raw.REGNUM || raw.POS || "POS-01").trim(),
+                                TRXNUM: String(raw.TRXNUM || raw.TrxNum || raw.Invoice || "").trim(),
+                                SKU: String(raw.SKU || "").trim(),
+                                Description: String(raw.Description || raw.Item || raw.Keterangan || "").trim(),
+                                Amount: Number(String(raw.Amount || raw.Total || raw.Nominal || 0).replace(/[^0-9.-]/g, "")) || 0,
+                                CashNum: String(raw.CashNum || raw.CashierID || "").trim(),
+                                AuthID: String(raw.AuthID || raw.SPV_ID || "").trim(),
+                                Remarks_Kasir: String(raw.Remarks_Kasir || "").trim(),
+                                Waktu_Remarks_Kasir: String(raw.Waktu_Remarks_Kasir || "").trim(),
+                                Status_Verifikasi_SPV: String(raw.Status_Verifikasi_SPV || "PENDING").trim() || "PENDING",
+                                SPV_Verifikator_ID: String(raw.SPV_Verifikator_ID || "").trim(),
+                                SPV_Verifikator_Nama: String(raw.SPV_Verifikator_Nama || "").trim(),
+                                Catatan_SPV: String(raw.Catatan_SPV || "").trim(),
+                                Paraf_TTD_Digital_SPV: String(raw.Paraf_TTD_Digital_SPV || "").trim(),
+                                Waktu_Verifikasi_SPV: String(raw.Waktu_Verifikasi_SPV || "").trim()
+                            };
+
+                            if (!rec.CashNum && !rec.TRXNUM && !rec.SKU && !rec.Description) return;
+
+                            const key = buildRowUniqueKey(sheetName, rec);
+                            if (existingKeys.has(key)) {
+                                rejected++;
+                            } else {
+                                existingKeys.add(key);
+                                db.sheets[sheetName].unshift(rec);
+                                sheetAddedList.push(rec);
+                                added++;
+                            }
+                        });
+
+                        batchToSync[sheetName] = sheetAddedList;
+                        grandAdded += added;
+                        grandRejected += rejected;
+
+                        itemsHtml.push(`
+                            <div class="p-3 flex flex-wrap items-center justify-between gap-2">
+                                <span class="font-bold text-slate-800">${sheetName}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Added: ${added}</span>
+                                    <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">Rejected Duplicate: ${rejected}</span>
+                                </div>
+                            </div>
+                        `);
+                    }
+
+                    saveDb();
+                    await postToAppsScript({ action: "uploadDailyExcel", sheetsData: batchToSync });
+
+                    document.getElementById("upload-totals-banner").innerHTML = `
+                        <span>Total Masuk: +${grandAdded} baris</span>
+                        <span>Total Duplikat Ditolak: ${grandRejected} baris</span>
+                    `;
+                    document.getElementById("upload-per-sheet-list").innerHTML = itemsHtml.join("");
+                    document.getElementById("upload-summary-wrap").classList.remove("hidden");
+
+                    renderTabs();
+                    renderSheetView();
+                    showToast(`Upload selesai: +${grandAdded} masuk, ${grandRejected} duplikat ditolak.`, "success");
+                } catch (err) {
+                    console.error(err);
+                    showToast("Gagal memproses file Excel.", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function exportSheetToExcel() {
+            if (currentUser?.Role !== "ADMIN") return;
+            const wb = XLSX.utils.book_new();
+
+            TRANSACTION_SHEETS.forEach(sheetName => {
+                const rows = (db.sheets[sheetName] || []).map(r => ({
+                    TrxDate: r.TrxDate,
+                    TrxTime: r.TrxTime,
+                    RegNum: r.RegNum,
+                    TRXNUM: r.TRXNUM,
+                    SKU: r.SKU,
+                    Description: r.Description,
+                    Amount: r.Amount,
+                    CashNum: r.CashNum,
+                    AuthID: r.AuthID,
+                    Remarks_Kasir: r.Remarks_Kasir,
+                    Waktu_Remarks_Kasir: r.Waktu_Remarks_Kasir,
+                    Status_Verifikasi_SPV: r.Status_Verifikasi_SPV,
+                    SPV_Verifikator_ID: r.SPV_Verifikator_ID,
+                    SPV_Verifikator_Nama: r.SPV_Verifikator_Nama,
+                    Catatan_SPV: r.Catatan_SPV,
+                    Waktu_Verifikasi_SPV: r.Waktu_Verifikasi_SPV,
+                    Paraf_TTD_Digital_SPV: r.Paraf_TTD_Digital_SPV ? "TERLAMPIR" : ""
+                }));
+                const ws = XLSX.utils.json_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+            });
+
+            const wsUsers = XLSX.utils.json_to_sheet(db.users);
+            XLSX.utils.book_append_sheet(wb, wsUsers, MASTER_USER_TAB);
+
+            XLSX.writeFile(wb, `Audit_Kasir_MDS_312_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            showToast("File .xlsx berhasil diekspor.", "success");
+        }
+
+        // =====================================================
+        // 9. MASTER USER (ADMIN)
+        // =====================================================
+        function renderUsersTable() {
+            const tbody = document.getElementById("users-tbody");
+            tbody.innerHTML = db.users.map(u => `
+                <tr class="hover:bg-slate-50">
+                    <td class="py-2.5 px-3.5 font-mono font-bold text-slate-900">${u.User_ID}</td>
+                    <td class="py-2.5 px-3.5 font-semibold text-slate-800">${u.Nama_Lengkap}</td>
+                    <td class="py-2.5 px-3.5">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                            u.Role === "ADMIN" ? "bg-rose-100 text-rose-800" :
+                            u.Role === "SPV" ? "bg-indigo-100 text-indigo-800" :
+                            "bg-emerald-100 text-emerald-800"
+                        }">${u.Role}</span>
+                    </td>
+                    <td class="py-2.5 px-3.5 font-mono text-slate-600">${u.PIN_Password}</td>
+                    <td class="py-2.5 px-3.5">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.Status_Aktif === "AKTIF" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"}">${u.Status_Aktif}</span>
+                    </td>
+                    <td class="py-2.5 px-3.5 text-right">
+                        <button type="button" onclick="openUserModal('${u.User_ID}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700">Edit</button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function openUserModal(existingId) {
+            if (currentUser?.Role !== "ADMIN") return;
+            const origInput = document.getElementById("user-original-id");
+            const idField = document.getElementById("form-user-id");
+
+            if (existingId) {
+                const u = db.users.find(x => x.User_ID === existingId);
+                if (!u) return;
+                document.getElementById("user-modal-title").textContent = "Edit User";
+                origInput.value = u.User_ID;
+                idField.value = u.User_ID;
+                idField.disabled = true;
+                document.getElementById("form-user-name").value = u.Nama_Lengkap;
+                document.getElementById("form-user-role").value = u.Role;
+                document.getElementById("form-user-pin").value = u.PIN_Password;
+                document.getElementById("form-user-status").value = u.Status_Aktif;
+            } else {
+                document.getElementById("user-modal-title").textContent = "Tambah User Baru";
+                origInput.value = "";
+                idField.value = "";
+                idField.disabled = false;
+                document.getElementById("form-user-name").value = "";
+                document.getElementById("form-user-role").value = "KASIR / SA";
+                document.getElementById("form-user-pin").value = "123456";
+                document.getElementById("form-user-status").value = "AKTIF";
+            }
+
+            document.getElementById("user-modal").classList.remove("hidden");
+            document.getElementById("user-modal").classList.add("flex");
+        }
+
+        function closeUserModal() {
+            document.getElementById("user-modal").classList.add("hidden");
+            document.getElementById("user-modal").classList.remove("flex");
+        }
+
+        async function submitUserForm(e) {
+            e.preventDefault();
+            const origId = document.getElementById("user-original-id").value;
+            const uid = document.getElementById("form-user-id").value.trim();
+            const nama = document.getElementById("form-user-name").value.trim();
+            const role = document.getElementById("form-user-role").value;
+            const pin = document.getElementById("form-user-pin").value.trim() || "123456";
+            const status = document.getElementById("form-user-status").value;
+
+            if (!origId) {
+                const dup = db.users.some(x => normalizeId(x.User_ID) === normalizeId(uid));
+                if (dup) {
+                    showToast("User_ID sudah ada.", "error");
+                    return;
+                }
+                db.users.push({ User_ID: uid, Nama_Lengkap: nama, Role: role, PIN_Password: pin, Status_Aktif: status });
+            } else {
+                const target = db.users.find(x => x.User_ID === origId);
+                if (target) {
+                    target.Nama_Lengkap = nama;
+                    target.Role = role;
+                    target.PIN_Password = pin;
+                    target.Status_Aktif = status;
+                }
+            }
+
+            saveDb();
+            await postToAppsScript({ action: "saveUser", userId: uid, nama, role, pin, status });
+
+            closeUserModal();
+            renderTabs();
+            renderUsersTable();
+            showToast("Master User disimpan.", "success");
+        }
+
+        // =====================================================
+        // 10. MODAL PENGATURAN & INISIALISASI
+        // =====================================================
+        function openConfigModal() {
+            document.getElementById("gas-url-input").value = getGasUrl();
+            document.getElementById("config-modal").classList.remove("hidden");
+            document.getElementById("config-modal").classList.add("flex");
+        }
+
+        function closeConfigModal() {
+            document.getElementById("config-modal").classList.add("hidden");
+            document.getElementById("config-modal").classList.remove("flex");
+        }
+
+        async function saveGasConfig(e) {
+            e.preventDefault();
+            const url = document.getElementById("gas-url-input").value.trim();
+            localStorage.setItem(KEY_GAS_URL, url);
+            updateConnectionStatus(null);
+            closeConfigModal();
+            showToast(url ? "URL Apps Script disimpan." : "Kembali ke Mode Simulasi Lokal.", "success");
+            if (url && currentUser) {
+                await syncFromGas(true);
+            }
+        }
+
+        function resetLocalDemoData() {
+            askConfirm(
+                "Reset Data Simulasi Lokal",
+                "Data transaksi dan user di penyimpanan lokal browser akan dikembalikan ke data awal Store 312. Lanjutkan?",
+                () => {
+                    db = createDefaultDb();
+                    saveDb(db);
+                    closeConfigModal();
+                    if (currentUser) {
+                        renderTabs();
+                        renderSheetView();
+                    }
+                    showToast("Data simulasi lokal direset ke awal.", "info");
+                }
+            );
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            initSignaturePad();
+            updateConnectionStatus(null);
+
+            try {
+                const savedSess = localStorage.getItem(KEY_SESSION);
+                if (savedSess) {
+                    const parsed = JSON.parse(savedSess);
+                    const validUser = db.users.find(u => normalizeId(u.User_ID) === normalizeId(parsed.User_ID));
+                    if (validUser && String(validUser.Status_Aktif).toUpperCase() === "AKTIF") {
+                        currentUser = validUser;
+                        showWorkspace();
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        });
+    </script>
+</body>
+</html>
