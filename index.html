@@ -655,6 +655,14 @@
             return s;
         }
 
+        function normalizeRoleName(rawRole) {
+            const r = String(rawRole || "").trim().toUpperCase();
+            if (!r) return "KASIR / SA";
+            if (r === "ADMIN" || r.includes("STORE MANAGER")) return "ADMIN";
+            if (r === "SPV" || r.includes("SUPERVISOR")) return "SPV";
+            return "KASIR / SA";
+        }
+
         function nowString() {
             const d = new Date();
             const p = n => String(n).padStart(2, "0");
@@ -1231,13 +1239,19 @@
 
                     const payload = res.data;
                     if (Array.isArray(payload.users) && payload.users.length > 0) {
-                        db.users = payload.users.map(u => ({
-                            User_ID: String(getFieldCI(u, ["User_ID", "UserID", "ID"]) || "").trim(),
-                            Nama_Lengkap: String(getFieldCI(u, ["Nama_Lengkap", "Nama", "Name"]) || "").trim(),
-                            Role: String(getFieldCI(u, ["Role"]) || "KASIR / SA").trim(),
-                            PIN_Password: String(getFieldCI(u, ["PIN_Password", "PIN", "Password"]) || "123456").trim(),
-                            Status_Aktif: String(getFieldCI(u, ["Status_Aktif", "Status"]) || "AKTIF").trim()
-                        }));
+                        db.users = payload.users
+                            .map(u => {
+                                const rawRole = String(getFieldCI(u, ["Role", "Jabatan"]) || "KASIR / SA").trim();
+                                return {
+                                    User_ID: String(getFieldCI(u, ["User_ID (CashNum / AuthID)", "User_ID", "UserID", "CashNum", "AuthID", "ID"]) || "").trim(),
+                                    Nama_Lengkap: String(getFieldCI(u, ["Nama_Lengkap", "Nama", "Name"]) || "").trim(),
+                                    Role: normalizeRoleName(rawRole),
+                                    Jabatan_Asli: rawRole,
+                                    PIN_Password: String(getFieldCI(u, ["PIN_Password", "PIN", "Password"]) ?? "123456").trim(),
+                                    Status_Aktif: String(getFieldCI(u, ["Status_Aktif", "Status"]) || "AKTIF").trim()
+                                };
+                            })
+                            .filter(u => u.User_ID && u.User_ID.toLowerCase() !== "user_id");
                     }
 
                     const incomingSheets = payload.sheets || payload;
@@ -1285,34 +1299,35 @@
         }
 
         async function handleLogin(e) {
-    e.preventDefault();
-    const uidInput = document.getElementById("login-userid").value.trim();
-    const pinInput = document.getElementById("login-pin").value.trim();
+            e.preventDefault();
+            const uidInput = document.getElementById("login-userid").value.trim();
+            const pinInput = document.getElementById("login-pin").value.trim();
 
-    if (!isSimulationMode()) {
-        await refreshAllData(false);
-    }
+            if (!isSimulationMode()) {
+                await refreshAllData(false);
+            }
 
-    const matched = (db.users || []).find(u =>
-        normalizeId(u.User_ID) === normalizeId(uidInput) &&
-        String(u.PIN_Password ?? "").trim() === pinInput
-    );
+            const matched = (db.users || []).find(u =>
+                normalizeId(u.User_ID) === normalizeId(uidInput) &&
+                String(u.PIN_Password ?? "").trim() === pinInput
+            );
 
-    if (!matched) {
-        showToast("User ID atau PIN tidak sesuai.", "error");
-        return;
-    }
-    if (String(matched.Status_Aktif || "").trim().toUpperCase() !== "AKTIF") {
-        showToast("Akun berstatus NONAKTIF. Hubungi Admin.", "error");
-        return;
-    }
+            if (!matched) {
+                showToast("User ID atau PIN tidak sesuai.", "error");
+                return;
+            }
+            if (String(matched.Status_Aktif || "").trim().toUpperCase() !== "AKTIF") {
+                showToast("Akun berstatus NONAKTIF. Hubungi Admin.", "error");
+                return;
+            }
+            matched.Role = normalizeRoleName(matched.Role);
 
-    currentUser = { ...matched, role: matched.Role };
-    localStorage.setItem(KEY_SESSION, JSON.stringify(currentUser));
-    updateAdminOnlyVisibility();
-    showWorkspace();
-    showToast(`Berhasil masuk sebagai ${currentUser.Nama_Lengkap} (${currentUser.Role})`, "success");
-}
+            currentUser = { ...matched, role: matched.Role };
+            localStorage.setItem(KEY_SESSION, JSON.stringify(currentUser));
+            updateAdminOnlyVisibility();
+            showWorkspace();
+            showToast(`Berhasil masuk sebagai ${currentUser.Nama_Lengkap} (${currentUser.Role})`, "success");
+        }
 
         function logoutUser() {
             currentUser = null;
