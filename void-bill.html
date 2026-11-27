@@ -6,7 +6,17 @@
     <title>Audit Kasir MDS 312 • Void-Bill Cancelation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        try {
+            if (localStorage.getItem("MDS_312_SESSION_V1")) {
+                document.documentElement.classList.add("has-session");
+            }
+        } catch (_) {}
+    </script>
     <style>
+        html.has-session #login-view {
+            display: none !important;
+        }
         body {
             font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: #f8fafc;

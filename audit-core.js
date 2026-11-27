@@ -706,6 +706,7 @@ async function handleLogin(e) {
 function logoutUser() {
     currentUser = null;
     localStorage.removeItem(SESSION_KEY);
+    document.documentElement.classList.remove("has-session");
     const infoBox = document.getElementById("user-info-box");
     const appView = document.getElementById("app-view");
     const loginView = document.getElementById("login-view");
@@ -729,6 +730,7 @@ function logoutUser() {
 
 function applyRoleView() {
     if (!currentUser) return;
+    document.documentElement.classList.remove("has-session");
     document.getElementById("login-view").classList.add("hidden");
     document.getElementById("app-view").classList.remove("hidden");
     document.getElementById("user-info-box").classList.remove("hidden");
