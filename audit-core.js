@@ -1,3 +1,129 @@
+const GROUP_BY_TRXNUM_SHEETS = [
+    "Item Correct",
+    "Return",
+    "Print Duplicate",
+    "Disc Manual"
+];
+const GROUP_BY_TRXTIME_SHEETS = [
+    "Void-Bill Cancelation"
+];
+
+function groupRowsForDisplay(sheetName, rows) {
+    const byTrxNum = GROUP_BY_TRXNUM_SHEETS.includes(sheetName);
+    const byTrxTime = GROUP_BY_TRXTIME_SHEETS.includes(sheetName);
+
+    if (!byTrxNum && !byTrxTime) {
+        return rows.map(r => {
+            const price = toNum(r.Price);
+            const amount = toNum(r.Amount) || price;
+            const disc = getRowDiscValue(r);
+            const net = toNum(r.NetAmount !== undefined ? r.NetAmount : Math.max(0, amount - disc));
+            return {
+                groupKey: String(r._rowIndex || Math.random()),
+                groupLabel: r.TRXNUM || "-",
+                primaryRow: r,
+                items: [r],
+                rowIndexes: [Number(r._rowIndex || 0)],
+                TrxDate: r.TrxDate || "",
+                TrxTime: r.TrxTime || "",
+                RegNum: r.RegNum || "",
+                TRXNUM: r.TRXNUM || "-",
+                CashNum: r.CashNum || "",
+                CashName: r.CashName || "",
+                AuthID: r.AuthID || "",
+                AuthName: r.AuthName || "",
+                totalPrice: price,
+                totalAmount: amount,
+                totalDisc: disc,
+                totalNet: net,
+                DiscPrc: r.DiscPrc || "",
+                Remarks_Kasir: r.Remarks_Kasir || "",
+                Waktu_Remarks_Kasir: r.Waktu_Remarks_Kasir || "",
+                Status_Verifikasi_SPV: r.Status_Verifikasi_SPV || "PENDING",
+                Catatan_SPV: r.Catatan_SPV || "",
+                SPV_Verifikator_Nama: r.SPV_Verifikator_Nama || "",
+                Paraf_TTD_Digital_SPV: r.Paraf_TTD_Digital_SPV || ""
+            };
+        });
+    }
+
+    const map = new Map();
+    rows.forEach((r, idx) => {
+        let key = "";
+        let label = "";
+        if (byTrxNum) {
+            const trx = normalizeIdToken(r.TRXNUM);
+            const dt = String(r.TrxDate || "").trim();
+            key = trx ? `TRX|${dt}|${trx}` : `ROW|${r._rowIndex || idx}`;
+            label = trx || "-";
+        } else if (byTrxTime) {
+            const tm = String(r.TrxTime || "").trim();
+            const dt = String(r.TrxDate || "").trim();
+            const reg = normalizeIdToken(r.RegNum);
+            const cash = normalizeIdToken(r.CashNum);
+            key = tm ? `TIME|${dt}|${tm}|${reg}|${cash}` : `ROW|${r._rowIndex || idx}`;
+            label = r.TRXNUM && r.TRXNUM !== "-" ? `${r.TRXNUM} • ${tm || "-"}` : `Jam ${tm || "-"}`;
+        }
+
+        const price = toNum(r.Price);
+        const amount = toNum(r.Amount) || price;
+        const disc = getRowDiscValue(r);
+        const net = toNum(r.NetAmount !== undefined ? r.NetAmount : Math.max(0, amount - disc));
+
+        if (!map.has(key)) {
+            map.set(key, {
+                groupKey: key,
+                groupLabel: label,
+                primaryRow: r,
+                items: [r],
+                rowIndexes: [Number(r._rowIndex || 0)],
+                TrxDate: r.TrxDate || "",
+                TrxTime: r.TrxTime || "",
+                RegNum: r.RegNum || "",
+                TRXNUM: label,
+                CashNum: r.CashNum || "",
+                CashName: r.CashName || "",
+                AuthID: r.AuthID || "",
+                AuthName: r.AuthName || "",
+                totalPrice: price,
+                totalAmount: amount,
+                totalDisc: disc,
+                totalNet: net,
+                DiscPrc: r.DiscPrc || "",
+                Remarks_Kasir: r.Remarks_Kasir || "",
+                Waktu_Remarks_Kasir: r.Waktu_Remarks_Kasir || "",
+                Status_Verifikasi_SPV: r.Status_Verifikasi_SPV || "PENDING",
+                Catatan_SPV: r.Catatan_SPV || "",
+                SPV_Verifikator_Nama: r.SPV_Verifikator_Nama || "",
+                Paraf_TTD_Digital_SPV: r.Paraf_TTD_Digital_SPV || ""
+            });
+        } else {
+            const grp = map.get(key);
+            grp.items.push(r);
+            grp.rowIndexes.push(Number(r._rowIndex || 0));
+            grp.totalPrice += price;
+            grp.totalAmount += amount;
+            grp.totalDisc += disc;
+            grp.totalNet += net;
+            if (!grp.CashNum && r.CashNum) grp.CashNum = r.CashNum;
+            if (!grp.CashName && r.CashName) grp.CashName = r.CashName;
+            if (!grp.AuthID && r.AuthID) grp.AuthID = r.AuthID;
+            if (!grp.AuthName && r.AuthName) grp.AuthName = r.AuthName;
+            if (!grp.Remarks_Kasir && r.Remarks_Kasir) {
+                grp.Remarks_Kasir = r.Remarks_Kasir;
+                grp.Waktu_Remarks_Kasir = r.Waktu_Remarks_Kasir || "";
+            }
+            if (grp.Status_Verifikasi_SPV === "PENDING" && r.Status_Verifikasi_SPV && r.Status_Verifikasi_SPV !== "PENDING") {
+                grp.Status_Verifikasi_SPV = r.Status_Verifikasi_SPV;
+                grp.Catatan_SPV = r.Catatan_SPV || "";
+                grp.SPV_Verifikator_Nama = r.SPV_Verifikator_Nama || "";
+                grp.Paraf_TTD_Digital_SPV = r.Paraf_TTD_Digital_SPV || "";
+            }
+        }
+    });
+
+    return Array.from(map.values());
+}
 const REMARKS_TEMPLATES = {
     "Unmatch Transaksi": [
         "Selisih sistem POS dengan fisik struk / EDC",
@@ -766,14 +892,15 @@ function renderSheetView(resetPage = true) {
         return true;
     });
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const groupedEntries = groupRowsForDisplay(activeTab, filtered);
+    const totalPages = Math.max(1, Math.ceil(groupedEntries.length / PAGE_SIZE));
     if (currentPageNum > totalPages) currentPageNum = totalPages;
     const startIdx = (currentPageNum - 1) * PAGE_SIZE;
-    const pageRows = filtered.slice(startIdx, startIdx + PAGE_SIZE);
+    const pageGroups = groupedEntries.slice(startIdx, startIdx + PAGE_SIZE);
 
-    renderPaginationBar(filtered.length, totalPages);
-    renderDesktopTable(pageRows, startIdx);
-    renderMobileCards(pageRows, startIdx);
+    renderPaginationBar(groupedEntries.length, totalPages);
+    renderDesktopTable(pageGroups, startIdx);
+    renderMobileCards(pageGroups, startIdx);
 }
 
 function renderPaginationBar(totalFiltered, totalPages) {
@@ -802,12 +929,12 @@ function renderPaginationBar(totalFiltered, totalPages) {
     `;
 }
 
-function buildPriceBlockHtml(row) {
-    const price = toNum(row.Price);
-    const amount = toNum(row.Amount) || price;
-    const disc = getRowDiscValue(row);
-    const net = toNum(row.NetAmount !== undefined ? row.NetAmount : (Math.max(0, amount - disc)));
-    const discPrc = String(row.DiscPrc || "").trim();
+function buildPriceBlockHtml(grp) {
+    const price = toNum(grp.totalPrice);
+    const amount = toNum(grp.totalAmount) || price;
+    const disc = toNum(grp.totalDisc);
+    const net = toNum(grp.totalNet);
+    const discPrc = grp.items.length === 1 ? String(grp.DiscPrc || "").trim() : "";
     const discText = disc > 0
         ? `Disc: <span class="font-bold text-rose-600">-${formatRupiah(disc)}</span>${discPrc ? ` <span class="text-[11px] text-rose-500">(${discPrc}%)</span>` : ""}`
         : `Disc: <span class="font-semibold text-slate-500">${formatRupiah(0)}</span>`;
@@ -822,25 +949,22 @@ function buildPriceBlockHtml(row) {
     `;
 }
 
-function buildItemBoxHtml(row) {
-    const trxNum = row.TRXNUM || "-";
-    const sku = row.SKU || "-";
-    const desc = row.Description || `Item ${sku}`;
-    const qty = toNum(row.QTY) || 1;
-    const price = toNum(row.Price);
-    const amount = toNum(row.Amount) || price;
-    const disc = getRowDiscValue(row);
-    const net = toNum(row.NetAmount !== undefined ? row.NetAmount : (Math.max(0, amount - disc)));
+function buildItemBoxHtml(grp) {
+    const headerLabel = grp.TRXNUM || "-";
+    const itemCount = grp.items.length;
+    const itemsHtml = grp.items.map((item, i) => {
+        const sku = item.SKU || "-";
+        const desc = item.Description || `Item ${sku}`;
+        const qty = toNum(item.QTY) || 1;
+        const price = toNum(item.Price);
+        const amount = toNum(item.Amount) || price;
+        const disc = getRowDiscValue(item);
+        const net = toNum(item.NetAmount !== undefined ? item.NetAmount : (Math.max(0, amount - disc)));
 
-    return `
-        <div class="space-y-1.5">
-            <div class="flex items-center gap-2">
-                <span class="font-extrabold text-slate-900">${trxNum}</span>
-                <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[11px]">1 SKU</span>
-            </div>
+        return `
             <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 space-y-0.5">
                 <div class="flex items-center justify-between gap-2">
-                    <span class="font-bold text-indigo-700">1. ${sku}</span>
+                    <span class="font-bold text-indigo-700">${i + 1}. ${sku}</span>
                     <span class="font-extrabold text-slate-900">${formatRupiah(net)}</span>
                 </div>
                 <div class="text-[11px] text-slate-700">${desc}</div>
@@ -848,23 +972,35 @@ function buildItemBoxHtml(row) {
                     Qty: ${qty} • Price: ${formatRupiah(price)} • Amt: ${formatRupiah(amount)} • Disc: ${formatRupiah(disc)}
                 </div>
             </div>
+        `;
+    }).join("");
+
+    return `
+        <div class="space-y-1.5">
+            <div class="flex items-center gap-2">
+                <span class="font-extrabold text-slate-900">${headerLabel}</span>
+                <span class="px-2 py-0.5 rounded ${itemCount > 1 ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-700"} font-bold text-[11px]">${itemCount} SKU</span>
+            </div>
+            <div class="space-y-1.5 max-h-56 overflow-y-auto scrollbar-thin pr-0.5">
+                ${itemsHtml}
+            </div>
         </div>
     `;
 }
 
-function buildActionButtonsHtml(row) {
+function buildActionButtonsHtml(grp) {
     const role = String((currentUser && currentUser.Role) || "").toUpperCase();
     const isAdmin = role.includes("ADMIN");
     const isSpv = role.includes("SPV");
     const canRemark = isAdmin || (!isSpv);
     const canVerify = isAdmin || isSpv;
-    const hasRemarks = Boolean(String(row.Remarks_Kasir || "").trim());
-    const rowIdx = Number(row._rowIndex || 0);
+    const hasRemarks = Boolean(String(grp.Remarks_Kasir || "").trim());
+    const rowIndicesCsv = grp.rowIndexes.join(",");
 
     const btns = [];
     if (canRemark) {
         btns.push(`
-            <button onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', ${rowIdx})"
+            <button onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${rowIndicesCsv}')"
                 class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                 ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
             </button>
@@ -872,7 +1008,7 @@ function buildActionButtonsHtml(row) {
     }
     if (canVerify) {
         btns.push(`
-            <button onclick="openSpvModal('${activeTab.replace(/'/g, "\\'")}', ${rowIdx})"
+            <button onclick="openSpvModal('${activeTab.replace(/'/g, "\\'")}', '${rowIndicesCsv}')"
                 class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition">
                 Verifikasi SPV
             </button>
@@ -881,16 +1017,16 @@ function buildActionButtonsHtml(row) {
     return btns.join(" ") || `<span class="text-[11px] text-slate-400">-</span>`;
 }
 
-function renderDesktopTable(rows) {
+function renderDesktopTable(groups) {
     const tbody = document.getElementById("desktop-tbody");
     if (!tbody) return;
-    if (!rows.length) {
+    if (!groups.length) {
         tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 font-semibold">Tidak ada data transaksi pada filter ini.</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = rows.map(row => {
-        const cat = getRowAuditCategory(row);
+    tbody.innerHTML = groups.map(grp => {
+        const cat = getRowAuditCategory(grp);
         const statusBadge = cat === "APPROVED"
             ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">APPROVED</span>`
             : cat === "REJECTED"
@@ -902,56 +1038,56 @@ function renderDesktopTable(rows) {
         return `
             <tr class="hover:bg-slate-50/70 align-top">
                 <td class="py-3 px-3 whitespace-nowrap">
-                    <div class="font-bold text-slate-900">${row.TrxDate || "-"}</div>
-                    <div class="text-[11px] text-slate-500">${row.TrxTime || "-"} • <span class="text-indigo-600 font-semibold">${row.RegNum || "-"}</span></div>
+                    <div class="font-bold text-slate-900">${grp.TrxDate || "-"}</div>
+                    <div class="text-[11px] text-slate-500">${grp.TrxTime || "-"} • <span class="text-indigo-600 font-semibold">${grp.RegNum || "-"}</span></div>
                 </td>
-                <td class="py-3 px-3 max-w-xs">${buildItemBoxHtml(row)}</td>
-                <td class="py-3 px-3 whitespace-nowrap">${buildPriceBlockHtml(row)}</td>
+                <td class="py-3 px-3 max-w-xs">${buildItemBoxHtml(grp)}</td>
+                <td class="py-3 px-3 whitespace-nowrap">${buildPriceBlockHtml(grp)}</td>
                 <td class="py-3 px-3">
-                    <div class="text-[11px] text-slate-500">CashNum: <span class="font-bold text-slate-800">${row.CashNum || "-"}</span></div>
-                    <div class="text-[11px] text-indigo-700 font-semibold">${row.CashName || ""}</div>
-                    <div class="text-[11px] text-slate-500 mt-1">AuthID: <span class="font-bold text-slate-800">${row.AuthID || "-"}</span></div>
-                    <div class="text-[11px] text-indigo-700 font-semibold">${row.AuthName || ""}</div>
+                    <div class="text-[11px] text-slate-500">CashNum: <span class="font-bold text-slate-800">${grp.CashNum || "-"}</span></div>
+                    <div class="text-[11px] text-indigo-700 font-semibold">${grp.CashName || ""}</div>
+                    <div class="text-[11px] text-slate-500 mt-1">AuthID: <span class="font-bold text-slate-800">${grp.AuthID || "-"}</span></div>
+                    <div class="text-[11px] text-indigo-700 font-semibold">${grp.AuthName || ""}</div>
                 </td>
                 <td class="py-3 px-3 max-w-[200px]">
-                    ${row.Remarks_Kasir
-                        ? `<div class="text-slate-800 font-medium">${row.Remarks_Kasir}</div><div class="text-[10px] text-slate-400 mt-0.5">${row.Waktu_Remarks_Kasir || ""}</div>`
+                    ${grp.Remarks_Kasir
+                        ? `<div class="text-slate-800 font-medium">${grp.Remarks_Kasir}</div><div class="text-[10px] text-slate-400 mt-0.5">${grp.Waktu_Remarks_Kasir || ""}</div>`
                         : `<span class="italic text-amber-600">Belum diisi kasir</span>`
                     }
                 </td>
                 <td class="py-3 px-3 space-y-1">
                     <div>${statusBadge}</div>
-                    ${row.Catatan_SPV ? `<div class="text-[11px] text-slate-700">Catatan: ${row.Catatan_SPV}</div>` : ""}
-                    ${row.SPV_Verifikator_Nama ? `<div class="text-[10px] text-slate-500">Oleh: ${row.SPV_Verifikator_Nama}</div>` : ""}
-                    <div class="text-[11px] text-slate-400">${row.Paraf_TTD_Digital_SPV ? "Paraf tersimpan" : "Belum ada paraf"}</div>
+                    ${grp.Catatan_SPV ? `<div class="text-[11px] text-slate-700">Catatan: ${grp.Catatan_SPV}</div>` : ""}
+                    ${grp.SPV_Verifikator_Nama ? `<div class="text-[10px] text-slate-500">Oleh: ${grp.SPV_Verifikator_Nama}</div>` : ""}
+                    <div class="text-[11px] text-slate-400">${grp.Paraf_TTD_Digital_SPV ? "Paraf tersimpan" : "Belum ada paraf"}</div>
                 </td>
-                <td class="py-3 px-3 text-right whitespace-nowrap">${buildActionButtonsHtml(row)}</td>
+                <td class="py-3 px-3 text-right whitespace-nowrap">${buildActionButtonsHtml(grp)}</td>
             </tr>
         `;
     }).join("");
 }
 
-function renderMobileCards(rows) {
+function renderMobileCards(groups) {
     const container = document.getElementById("mobile-cards");
     if (!container) return;
-    if (!rows.length) {
+    if (!groups.length) {
         container.innerHTML = `<div class="py-8 text-center text-xs text-slate-400 font-semibold">Tidak ada data transaksi pada filter ini.</div>`;
         return;
     }
 
-    container.innerHTML = rows.map(row => `
+    container.innerHTML = groups.map(grp => `
         <div class="border border-slate-200 rounded-xl p-3 space-y-2.5 bg-white">
             <div class="flex items-center justify-between text-xs">
-                <span class="font-bold text-slate-900">${row.TrxDate || "-"} • ${row.TrxTime || "-"}</span>
-                <span class="font-bold text-indigo-600">POS ${row.RegNum || "-"}</span>
+                <span class="font-bold text-slate-900">${grp.TrxDate || "-"} • ${grp.TrxTime || "-"}</span>
+                <span class="font-bold text-indigo-600">POS ${grp.RegNum || "-"}</span>
             </div>
-            ${buildItemBoxHtml(row)}
-            ${buildPriceBlockHtml(row)}
+            ${buildItemBoxHtml(grp)}
+            ${buildPriceBlockHtml(grp)}
             <div class="text-[11px] text-slate-600 pt-1 border-t border-slate-100">
-                <div>CashNum: <strong>${row.CashNum || "-"}</strong> ${row.CashName ? `(${row.CashName})` : ""}</div>
-                <div>Remarks: <strong>${row.Remarks_Kasir || "Belum diisi kasir"}</strong></div>
+                <div>CashNum: <strong>${grp.CashNum || "-"}</strong> ${grp.CashName ? `(${grp.CashName})` : ""}</div>
+                <div>Remarks: <strong>${grp.Remarks_Kasir || "Belum diisi kasir"}</strong></div>
             </div>
-            <div class="flex justify-end pt-1">${buildActionButtonsHtml(row)}</div>
+            <div class="flex justify-end pt-1">${buildActionButtonsHtml(grp)}</div>
         </div>
     `).join("");
 }
@@ -1193,16 +1329,28 @@ function clearRemarksText() {
     }
 }
 
-function openRemarksModal(sheetName, rowIndex) {
-    const row = (db.sheets[sheetName] || []).find(r => Number(r._rowIndex) === Number(rowIndex));
-    if (!row) return;
-    activeRemarksCtx = { sheetName, row };
+function parseRowIndices(rowIndexOrCsv) {
+    return String(rowIndexOrCsv || "")
+        .split(",")
+        .map(s => Number(s.trim()))
+        .filter(n => n > 0);
+}
+
+function openRemarksModal(sheetName, rowIndexOrCsv) {
+    const indices = parseRowIndices(rowIndexOrCsv);
+    const rows = (db.sheets[sheetName] || []).filter(r => indices.includes(Number(r._rowIndex)));
+    if (!rows.length) return;
+    const primary = rows[0];
+    const totalGroupNet = rows.reduce((acc, item) => acc + toNum(item.NetAmount), 0);
+    activeRemarksCtx = { sheetName, rows };
+
+    const skuSummary = rows.length > 1 ? `${rows.length} SKU (${rows.map(x => x.SKU || "-").join(", ")})` : (primary.SKU || "-");
     document.getElementById("remarks-trx-info").innerHTML = `
-        <div><strong>Sheet:</strong> ${sheetName} • <strong>No Trx:</strong> ${row.TRXNUM || "-"}</div>
-        <div><strong>SKU:</strong> ${row.SKU || "-"} • <strong>Net:</strong> ${formatRupiah(row.NetAmount)}</div>
+        <div><strong>Sheet:</strong> ${sheetName} • <strong>No Trx / Jam:</strong> ${primary.TRXNUM || primary.TrxTime || "-"}</div>
+        <div><strong>SKU:</strong> ${skuSummary} • <strong>Total Net:</strong> ${formatRupiah(totalGroupNet)}</div>
     `;
 
-    const existingRemarks = String(row.Remarks_Kasir || "").trim();
+    const existingRemarks = String(primary.Remarks_Kasir || "").trim();
     const templates = REMARKS_TEMPLATES[sheetName] || [];
     const sel = document.getElementById("remarks-template-select");
     if (sel) {
@@ -1225,34 +1373,41 @@ function openRemarksModal(sheetName, rowIndex) {
 
 async function submitRemarks() {
     if (!activeRemarksCtx) return;
-    const { sheetName, row } = activeRemarksCtx;
+    const { sheetName, rows } = activeRemarksCtx;
     const remarks = document.getElementById("remarks-input").value.trim();
     const nowStr = new Date().toISOString().replace("T", " ").slice(0, 19);
 
-    row.Remarks_Kasir = remarks;
-    row.Waktu_Remarks_Kasir = nowStr;
+    rows.forEach(r => {
+        r.Remarks_Kasir = remarks;
+        r.Waktu_Remarks_Kasir = nowStr;
+    });
     saveDb();
     renderSheetView(false);
     closeModal("remarks-modal");
 
-    await callGasApi({
-        action: "saveRemarks",
-        sheetName,
-        rowIndex: row._rowIndex,
-        remarks
-    });
+    for (const r of rows) {
+        await callGasApi({
+            action: "saveRemarks",
+            sheetName,
+            rowIndex: r._rowIndex,
+            remarks
+        });
+    }
 }
 
-function openSpvModal(sheetName, rowIndex) {
-    const row = (db.sheets[sheetName] || []).find(r => Number(r._rowIndex) === Number(rowIndex));
-    if (!row) return;
-    activeSpvCtx = { sheetName, row };
+function openSpvModal(sheetName, rowIndexOrCsv) {
+    const indices = parseRowIndices(rowIndexOrCsv);
+    const rows = (db.sheets[sheetName] || []).filter(r => indices.includes(Number(r._rowIndex)));
+    if (!rows.length) return;
+    const primary = rows[0];
+    activeSpvCtx = { sheetName, rows };
+
     document.getElementById("spv-trx-info").innerHTML = `
-        <div><strong>Sheet:</strong> ${sheetName} • <strong>No Trx:</strong> ${row.TRXNUM || "-"}</div>
-        <div><strong>Remarks Kasir:</strong> ${row.Remarks_Kasir || "-"}</div>
+        <div><strong>Sheet:</strong> ${sheetName} • <strong>No Trx / Jam:</strong> ${primary.TRXNUM || primary.TrxTime || "-"} (${rows.length} SKU)</div>
+        <div><strong>Remarks Kasir:</strong> ${primary.Remarks_Kasir || "-"}</div>
     `;
-    document.getElementById("spv-status-select").value = row.Status_Verifikasi_SPV === "REJECTED" ? "REJECTED" : "APPROVED";
-    document.getElementById("spv-note-input").value = row.Catatan_SPV || "";
+    document.getElementById("spv-status-select").value = primary.Status_Verifikasi_SPV === "REJECTED" ? "REJECTED" : "APPROVED";
+    document.getElementById("spv-note-input").value = primary.Catatan_SPV || "";
     clearSignatureCanvas();
     openModal("spv-modal");
 }
@@ -1308,34 +1463,38 @@ function initSignatureEvents() {
 
 async function submitVerification() {
     if (!activeSpvCtx) return;
-    const { sheetName, row } = activeSpvCtx;
+    const { sheetName, rows } = activeSpvCtx;
     const status = document.getElementById("spv-status-select").value;
     const catatanSpv = document.getElementById("spv-note-input").value.trim();
     const canvas = document.getElementById("signature-canvas");
     const signatureBase64 = canvas.toDataURL("image/png");
     const nowStr = new Date().toISOString().replace("T", " ").slice(0, 19);
 
-    row.Status_Verifikasi_SPV = status;
-    row.Catatan_SPV = catatanSpv;
-    row.SPV_Verifikator_ID = currentUser.User_ID;
-    row.SPV_Verifikator_Nama = currentUser.Nama_Lengkap;
-    row.Paraf_TTD_Digital_SPV = signatureBase64;
-    row.Waktu_Verifikasi_SPV = nowStr;
+    rows.forEach(r => {
+        r.Status_Verifikasi_SPV = status;
+        r.Catatan_SPV = catatanSpv;
+        r.SPV_Verifikator_ID = currentUser.User_ID;
+        r.SPV_Verifikator_Nama = currentUser.Nama_Lengkap;
+        r.Paraf_TTD_Digital_SPV = signatureBase64;
+        r.Waktu_Verifikasi_SPV = nowStr;
+    });
 
     saveDb();
     renderSheetView(false);
     closeModal("spv-modal");
 
-    await callGasApi({
-        action: "saveVerification",
-        sheetName,
-        rowIndex: row._rowIndex,
-        status,
-        catatanSpv,
-        spvId: currentUser.User_ID,
-        spvName: currentUser.Nama_Lengkap,
-        signatureBase64
-    });
+    for (const r of rows) {
+        await callGasApi({
+            action: "saveVerification",
+            sheetName,
+            rowIndex: r._rowIndex,
+            status,
+            catatanSpv,
+            spvId: currentUser.User_ID,
+            spvName: currentUser.Nama_Lengkap,
+            signatureBase64
+        });
+    }
 }
 
 function toggleAllDeleteSheets(checked) {
