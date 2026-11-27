@@ -747,90 +747,252 @@
             return texts.some(t => metaPrefixes.some(p => t.startsWith(p)));
         }
 
-        // Penyesuaian mapping per sheet sesuai struktur header masing-masing sheet
+        // Penyesuaian mapping per sheet sesuai struktur header masing-masing sheet di Google Sheets
         function resolveTransactionRowFields(sheetName, raw) {
             if (!raw || typeof raw !== "object") return raw;
             const normSheet = String(sheetName || "").trim().toLowerCase();
 
+            // 1. Unmatch Transaksi (Unmatch Journal): No | TrxDate | TrxTime | StoreIdnt | StoreName | SKU | RegNum | CashNum | CounterID
+            if (normSheet === "unmatch transaksi") {
+                const noVal = String(getFieldCI(raw, ["No", "TRXNUM", "TrxNum"]) || "").trim();
+                const dt = formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Date"]));
+                const tm = formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Time"]));
+                const sku = String(getFieldCI(raw, ["SKU"]) || "").trim();
+                const reg = String(getFieldCI(raw, ["RegNum", "REGNUM"]) || "").trim();
+                const cash = String(getFieldCI(raw, ["CashNum"]) || "").trim();
+                const counter = String(getFieldCI(raw, ["CounterID", "CounterId"]) || "").trim();
+                return {
+                    ...raw,
+                    TrxDate: dt || raw.TrxDate,
+                    TrxTime: tm || raw.TrxTime,
+                    TRXNUM: noVal ? `NO-${noVal}` : (raw.TRXNUM || ""),
+                    SKU: sku || raw.SKU,
+                    RegNum: reg || counter || raw.RegNum,
+                    CashNum: cash || raw.CashNum,
+                    Description: counter ? `Counter: ${counter}` : (raw.Description || "-"),
+                    Price: 0,
+                    Amount: 0,
+                    Disc: 0,
+                    NetAmount: 0,
+                    hasNominal: false
+                };
+            }
+
+            // 2. Parked Invoice: Counter & Date' | Cashier Name and ID | Parked Invoice Number | Time Of Parking | Amount
             if (normSheet === "parked invoice") {
-                const trxNumRaw = getFieldCI(raw, [
-                    "ParkedInvoiceNumber",
-                    "Parked Invoice Number",
-                    "TRXNUM",
-                    "TrxNum",
-                    "NoTrx"
-                ]);
-                const trxNum = String(trxNumRaw || "").trim();
-
-                // Kolom F berheader "Parked Invoice" atau "Amount" (bukan kolom D "Parked Invoice Number")
-                const colFRaw = getFieldCI(raw, [
-                    "ParkedInvoice",
-                    "Parked Invoice",
-                    "ParkedAmount",
-                    "Parked Amount",
-                    "Amount",
-                    "TotalAmount",
-                    "NetAmount"
-                ]);
-
-                let nominalColF = 0;
-                if (colFRaw !== "" && colFRaw !== null && colFRaw !== undefined) {
-                    nominalColF = parseCurrencyNumber(colFRaw);
-                }
-                if (!nominalColF) {
-                    const fallbackVal = parseCurrencyNumber(raw.Amount ?? raw.Price ?? raw.NetAmount ?? 0);
-                    const trxNumAsNum = parseCurrencyNumber(trxNum);
-                    if (fallbackVal > 0 && !(trxNumAsNum > 0 && fallbackVal === trxNumAsNum)) {
-                        nominalColF = fallbackVal;
+                const counterDateRaw = String(getFieldCI(raw, ["Counter & Date'", "Counter & Date", "CounterDate", "Counter & Date "]) || "").trim();
+                let parsedReg = raw.RegNum || "";
+                let parsedDate = raw.TrxDate || "";
+                if (counterDateRaw) {
+                    const parts = counterDateRaw.split(/\s+/);
+                    if (parts.length >= 2) {
+                        parsedReg = parts[0];
+                        parsedDate = parts.slice(1).join(" ");
+                    } else {
+                        parsedDate = counterDateRaw;
                     }
                 }
 
-                const discVal = parseCurrencyNumber(getFieldCI(raw, ["Disc", "TotalDisc", "DiscManual"]) || raw.Disc || 0);
-                const netVal = Math.max(0, nominalColF - discVal);
+                const cashierRaw = String(getFieldCI(raw, ["Cashier Name and ID", "CashierNameandID", "Cashier"]) || "").trim();
+                let parsedCash = raw.CashNum || "";
+                let parsedCashName = "";
+                if (cashierRaw) {
+                    const idMatch = cashierRaw.match(/(\d{3,10})/);
+                    if (idMatch) {
+                        parsedCash = idMatch[1];
+                        parsedCashName = cashierRaw.replace(idMatch[1], "").replace(/[-()]/g, " ").trim();
+                    } else {
+                        parsedCash = cashierRaw;
+                    }
+                }
+
+                const trxNum = String(getFieldCI(raw, ["Parked Invoice Number", "ParkedInvoiceNumber", "TRXNUM", "TrxNum"]) || "").trim();
+                const parkTime = formatExcelTime(getFieldCI(raw, ["Time Of Parking", "TimeOfParking", "TrxTime"]));
+                const amountVal = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT", "Parked Invoice", "ParkedInvoice"]));
 
                 return {
                     ...raw,
-                    TRXNUM: trxNum || raw.TRXNUM || "",
-                    Price: nominalColF,
-                    Amount: nominalColF,
-                    Disc: discVal,
-                    NetAmount: netVal
-                };
-            }
-
-            if (normSheet === "price overide") {
-                const newPrice = parseCurrencyNumber(getFieldCI(raw, ["NewPrice", "New Price"]));
-                const origPrice = parseCurrencyNumber(getFieldCI(raw, ["OrigPrice", "Orig Price", "Price"]));
-                const finalPrice = newPrice || origPrice || 0;
-                const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY"]) || 1) || 1;
-                const amount = finalPrice * qty;
-                return {
-                    ...raw,
-                    Price: finalPrice,
-                    Amount: amount,
+                    TrxDate: formatExcelDate(parsedDate) || raw.TrxDate,
+                    TrxTime: parkTime || raw.TrxTime,
+                    RegNum: parsedReg || raw.RegNum,
+                    TRXNUM: trxNum || raw.TRXNUM,
+                    SKU: "PARKED",
+                    Description: parsedCashName ? `Kasir: ${parsedCashName}` : (cashierRaw || `Parked Invoice ${trxNum}`),
+                    CashNum: parsedCash || raw.CashNum,
+                    Price: amountVal,
+                    Amount: amountVal,
                     Disc: 0,
-                    NetAmount: amount
+                    NetAmount: amountVal,
+                    hasNominal: true
                 };
             }
 
-            if (normSheet === "disc manual") {
-                const price = parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE"]));
-                const amount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT"])) || price;
-                const totalDiscRaw = getFieldCI(raw, ["TotalDisc", "Total Disc", "DiscManual", "Disc Manual"]);
-                const discAuto = parseCurrencyNumber(getFieldCI(raw, ["DiscAuto", "Disc Auto"]));
-                const disc = totalDiscRaw !== "" ? parseCurrencyNumber(totalDiscRaw) : discAuto;
-                const paymentRaw = getFieldCI(raw, ["Payment", "NetAmount", "Net"]);
-                const net = paymentRaw !== "" ? parseCurrencyNumber(paymentRaw) : Math.max(0, amount - disc);
+            // 3. Item Correct: TRXDATE | CreateTime | Store | StoreName | SKU | TRXNUM | REGNUM | PurchaseType | CounterID | CustRef | CashNum | QTY | PRICE | AMOUNT | DISC | ROLE | AuthID | AuthName
+            if (normSheet === "item correct") {
+                const qty = parseCurrencyNumber(getFieldCI(raw, ["QTY", "Qty"]) || 1) || 1;
+                const price = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price"]));
+                const amount = parseCurrencyNumber(getFieldCI(raw, ["AMOUNT", "Amount"])) || (price * qty);
+                const disc = parseCurrencyNumber(getFieldCI(raw, ["DISC", "Disc"]));
+                const net = Math.max(0, amount - disc);
+                const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
                 return {
                     ...raw,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || raw.TrxDate,
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["CreateTime", "TrxTime"])) || raw.TrxTime,
+                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
+                    TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
+                    RegNum: String(getFieldCI(raw, ["REGNUM", "RegNum"]) || raw.RegNum || "").trim(),
+                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
+                    AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
+                    Description: pType ? `Qty: ${qty} • ${pType}` : `Qty: ${qty}`,
+                    Qty: qty,
                     Price: price,
                     Amount: amount,
                     Disc: disc,
-                    NetAmount: net
+                    NetAmount: net,
+                    hasNominal: true
                 };
             }
 
-            return raw;
+            // 4. Void-Bill Cancelation: TRXDATE | TrxTime | Store | StoreName | SKU | TRXNUM | REGNUM | PurchaseType | CounterID | CustRef | CashNum | QTY | PRICE | AMOUNT | ROLE | AuthID | AuthName | Description
+            if (normSheet === "void-bill cancelation") {
+                const qty = parseCurrencyNumber(getFieldCI(raw, ["QTY", "Qty"]) || 1) || 1;
+                const price = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price"]));
+                const amount = parseCurrencyNumber(getFieldCI(raw, ["AMOUNT", "Amount"])) || (price * qty);
+                const desc = String(getFieldCI(raw, ["Description"]) || "").trim();
+                const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
+                return {
+                    ...raw,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || raw.TrxDate,
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || raw.TrxTime,
+                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
+                    TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
+                    RegNum: String(getFieldCI(raw, ["REGNUM", "RegNum"]) || raw.RegNum || "").trim(),
+                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
+                    AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
+                    Description: desc || (pType ? `Qty: ${qty} • ${pType}` : `Qty: ${qty}`),
+                    Qty: qty,
+                    Price: price,
+                    Amount: amount,
+                    Disc: 0,
+                    NetAmount: amount,
+                    hasNominal: true
+                };
+            }
+
+            // 5. Return: TRXDATE | CreateTime | Store | StoreName | SKU | TRXNUM | REGNUM | PurchaseType | CounterID | CustRef | CashNum | Qty | PRICE | Amount | Disc | NetAmount | Role | AuthID | AuthName
+            if (normSheet === "return") {
+                const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY"]) || 1) || 1;
+                const price = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price"]));
+                const amount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT"])) || (price * qty);
+                const disc = parseCurrencyNumber(getFieldCI(raw, ["Disc", "DISC"]));
+                const netRaw = getFieldCI(raw, ["NetAmount"]);
+                const net = netRaw !== "" ? parseCurrencyNumber(netRaw) : Math.max(0, amount - disc);
+                const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
+                return {
+                    ...raw,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || raw.TrxDate,
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["CreateTime", "TrxTime"])) || raw.TrxTime,
+                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
+                    TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
+                    RegNum: String(getFieldCI(raw, ["REGNUM", "RegNum"]) || raw.RegNum || "").trim(),
+                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
+                    AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
+                    Description: pType ? `Qty: ${qty} • ${pType}` : `Qty: ${qty}`,
+                    Qty: qty,
+                    Price: price,
+                    Amount: amount,
+                    Disc: disc,
+                    NetAmount: net,
+                    hasNominal: true
+                };
+            }
+
+            // 6. Price Overide: TRXDATE | TrxTime | Store | StoreName | SKU | TRXNUM | REGNUM | CounterID | CashNum | OrigPrice | NewPrice | Role | AuthID | AuthName
+            if (normSheet === "price overide") {
+                const origPrice = parseCurrencyNumber(getFieldCI(raw, ["OrigPrice", "Orig Price"]));
+                const newPrice = parseCurrencyNumber(getFieldCI(raw, ["NewPrice", "New Price"]));
+                const selisih = Math.max(0, origPrice - newPrice);
+                return {
+                    ...raw,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || raw.TrxDate,
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || raw.TrxTime,
+                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
+                    TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
+                    RegNum: String(getFieldCI(raw, ["REGNUM", "RegNum"]) || raw.RegNum || "").trim(),
+                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
+                    AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
+                    Description: `Orig: ${formatRupiah(origPrice)} → New: ${formatRupiah(newPrice)}`,
+                    Price: origPrice,
+                    Amount: origPrice,
+                    Disc: selisih,
+                    NetAmount: newPrice || origPrice,
+                    hasNominal: true
+                };
+            }
+
+            // 7. Print Duplicate: TrxDate | TrxTime | Store | StoreName | CashNum | TrxNum | CounterId | Role | AuthId | AuthName
+            if (normSheet === "print duplicate") {
+                const counter = String(getFieldCI(raw, ["CounterId", "CounterID"]) || "").trim();
+                const roleStr = String(getFieldCI(raw, ["Role"]) || "").trim();
+                return {
+                    ...raw,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE"])) || raw.TrxDate,
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || raw.TrxTime,
+                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
+                    TRXNUM: String(getFieldCI(raw, ["TrxNum", "TRXNUM"]) || raw.TRXNUM || "").trim(),
+                    RegNum: counter || raw.RegNum,
+                    AuthID: String(getFieldCI(raw, ["AuthId", "AuthID"]) || raw.AuthID || "").trim(),
+                    SKU: "REPRINT",
+                    Description: [counter ? `Counter: ${counter}` : "", roleStr ? `Role: ${roleStr}` : ""].filter(Boolean).join(" • ") || "Print Duplicate",
+                    Price: 0,
+                    Amount: 0,
+                    Disc: 0,
+                    NetAmount: 0,
+                    hasNominal: false
+                };
+            }
+
+            // 8. Disc Manual: Trx Date | Trx Time | Store | Store Name | Reg Num | Trx Num | CustNum | SKU | Purch Type | Cash Num | QTY | Price | Amount | Disc Auto | Disc Manual | Total Disc | Disc Prc | Payment | Role | AuthId | Auth Name
+            if (normSheet === "disc manual") {
+                const qty = parseCurrencyNumber(getFieldCI(raw, ["QTY", "Qty"]) || 1) || 1;
+                const price = parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE"]));
+                const amount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT"])) || (price * qty);
+                const totalDiscRaw = getFieldCI(raw, ["Total Disc", "TotalDisc"]);
+                const discManualRaw = getFieldCI(raw, ["Disc Manual", "DiscManual"]);
+                const discAutoRaw = getFieldCI(raw, ["Disc Auto", "DiscAuto"]);
+                const disc = totalDiscRaw !== ""
+                    ? parseCurrencyNumber(totalDiscRaw)
+                    : (discManualRaw !== "" ? parseCurrencyNumber(discManualRaw) : parseCurrencyNumber(discAutoRaw));
+                const paymentRaw = getFieldCI(raw, ["Payment", "NetAmount"]);
+                const net = paymentRaw !== "" ? parseCurrencyNumber(paymentRaw) : Math.max(0, amount - disc);
+                const discPrc = String(getFieldCI(raw, ["Disc Prc", "DiscPrc"]) || "").trim();
+                const pType = String(getFieldCI(raw, ["Purch Type", "PurchaseType"]) || "").trim();
+                return {
+                    ...raw,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["Trx Date", "TrxDate"])) || raw.TrxDate,
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["Trx Time", "TrxTime"])) || raw.TrxTime,
+                    RegNum: String(getFieldCI(raw, ["Reg Num", "RegNum"]) || raw.RegNum || "").trim(),
+                    TRXNUM: String(getFieldCI(raw, ["Trx Num", "TrxNum", "TRXNUM"]) || raw.TRXNUM || "").trim(),
+                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
+                    CashNum: String(getFieldCI(raw, ["Cash Num", "CashNum"]) || raw.CashNum || "").trim(),
+                    AuthID: String(getFieldCI(raw, ["AuthId", "AuthID", "Auth Id"]) || raw.AuthID || "").trim(),
+                    Description: [
+                        `Qty: ${qty}`,
+                        discManualRaw !== "" ? `Disc Manual: ${formatRupiah(parseCurrencyNumber(discManualRaw))}` : "",
+                        discPrc ? `(${discPrc}%)` : "",
+                        pType
+                    ].filter(Boolean).join(" • "),
+                    Qty: qty,
+                    Price: price,
+                    Amount: amount,
+                    Disc: disc,
+                    NetAmount: net,
+                    hasNominal: true
+                };
+            }
+
+            return { ...raw, hasNominal: true };
         }
 
         function formatExcelDate(val) {
@@ -1202,6 +1364,7 @@
                 Amount: amount,
                 Disc: rawDisc,
                 NetAmount: netAmount,
+                hasNominal: true,
                 CashNum: String(getFieldCI(raw, ["CashNum", "Cash Num", "CashierID", "Cashier", "KasirID"]) || "").trim(),
                 AuthID: String(getFieldCI(raw, ["AuthID", "AuthId", "Auth ID", "SPV_ID", "SupervisorID"]) || "").trim(),
                 Remarks_Kasir: String(getFieldCI(raw, ["Remarks_Kasir", "RemarksKasir", "Remarks"]) || "").trim(),
@@ -1416,7 +1579,8 @@
                         totalPrice: 0,
                         totalAmount: 0,
                         totalDisc: 0,
-                        totalNetAmount: 0
+                        totalNetAmount: 0,
+                        hasNominal: r.hasNominal !== false
                     });
                 }
                 const grp = map.get(gKey);
@@ -1626,6 +1790,9 @@
         }
 
         function renderNominalBreakdownHtml(grp) {
+            if (grp.hasNominal === false) {
+                return `<span class="text-[11px] italic text-slate-400">Non-nominal</span>`;
+            }
             return `
                 <div class="space-y-0.5 text-[11px]">
                     <div class="text-slate-500">Price: <span class="font-semibold text-slate-700">${formatRupiah(grp.totalPrice)}</span></div>
@@ -2164,23 +2331,18 @@
 
                             const serverObj = {
                                 ...raw,
-                                ...rec,
-                                TRXDATE: rec.TrxDate,
-                                TrxDate: rec.TrxDate,
-                                TrxTime: rec.TrxTime,
-                                REGNUM: rec.RegNum,
-                                RegNum: rec.RegNum,
-                                TRXNUM: rec.TRXNUM,
-                                TrxNum: rec.TRXNUM,
-                                SKU: rec.SKU,
-                                Description: rec.Description,
-                                PRICE: rec.Price,
-                                Price: rec.Price,
-                                Amount: rec.Amount,
-                                Disc: rec.Disc,
-                                NetAmount: rec.NetAmount,
-                                CashNum: rec.CashNum,
-                                AuthID: rec.AuthID
+                                TrxDate: raw.TrxDate ?? rec.TrxDate,
+                                TrxTime: raw.TrxTime ?? rec.TrxTime,
+                                RegNum: raw.RegNum ?? rec.RegNum,
+                                TRXNUM: raw.TRXNUM ?? rec.TRXNUM,
+                                SKU: raw.SKU ?? rec.SKU,
+                                Description: raw.Description ?? rec.Description,
+                                Price: raw.Price ?? rec.Price,
+                                Amount: raw.Amount ?? rec.Amount,
+                                Disc: raw.Disc ?? rec.Disc,
+                                NetAmount: raw.NetAmount ?? rec.NetAmount,
+                                CashNum: raw.CashNum ?? rec.CashNum,
+                                AuthID: raw.AuthID ?? rec.AuthID
                             };
                             sheetRowsToSend.push(serverObj);
 
