@@ -528,9 +528,25 @@ async function handleLogin(e) {
 function logoutUser() {
     currentUser = null;
     localStorage.removeItem(SESSION_KEY);
-    document.getElementById("user-info-box").classList.add("hidden");
-    document.getElementById("app-view").classList.add("hidden");
-    document.getElementById("login-view").classList.remove("hidden");
+    const infoBox = document.getElementById("user-info-box");
+    const appView = document.getElementById("app-view");
+    const loginView = document.getElementById("login-view");
+    const settingsBtn = document.getElementById("btn-settings");
+    if (infoBox) {
+        infoBox.classList.add("hidden");
+        infoBox.classList.remove("flex");
+    }
+    if (settingsBtn) {
+        settingsBtn.classList.add("hidden");
+    }
+    if (appView) appView.classList.add("hidden");
+    if (loginView) loginView.classList.remove("hidden");
+
+    const pathName = (window.location.pathname || "").toLowerCase();
+    const isIndexPage = pathName.endsWith("/") || pathName.endsWith("/index.html") || pathName === "index.html";
+    if (!isIndexPage) {
+        window.location.href = "index.html";
+    }
 }
 
 function applyRoleView() {
@@ -550,6 +566,8 @@ function applyRoleView() {
 
     const adminBtns = document.getElementById("admin-action-buttons");
     if (adminBtns) adminBtns.classList.toggle("hidden", !isAdmin);
+    const settingsBtn = document.getElementById("btn-settings");
+    if (settingsBtn) settingsBtn.classList.toggle("hidden", !isAdmin);
 
     if (activeTab === "MASTER_USER" && !isAdmin) {
         window.location.href = "index.html";
@@ -1370,6 +1388,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (isSimulationMode()) {
         updateConnectionBadge("Simulasi Lokal", "amber");
     }
+    const settingsBtnInit = document.getElementById("btn-settings");
+    if (settingsBtnInit) settingsBtnInit.classList.add("hidden");
     const savedSession = localStorage.getItem(SESSION_KEY);
     if (savedSession) {
         try {
