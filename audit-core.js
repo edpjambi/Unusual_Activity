@@ -1,3 +1,67 @@
+const STORE_ROLES = [
+    "ADMIN",
+    "STORE - ADMIN STAFF HR",
+    "STORE - ASSISTANT STORE MANAGER",
+    "STORE - ASSISTANT SUPERVISOR CASHIER",
+    "STORE - CASHIER",
+    "STORE - EDP",
+    "STORE - EXPEDITION",
+    "STORE - MONITOR & MCC",
+    "STORE - SALES ASSOCIATE",
+    "STORE - STORE MANAGER",
+    "STORE - SUPERVISOR AREA",
+    "STORE - SUPERVISOR CASHIER",
+    "STORE - SUPERVISOR EXPEDITION",
+    "STORE - SUPERVISOR HR & GA",
+    "STORE - SUPERVISOR VM",
+    "STORE - VM ARTIST"
+];
+
+const SPV_VERIFIER_ROLES = [
+    "STORE - ASSISTANT STORE MANAGER",
+    "STORE - ASSISTANT SUPERVISOR CASHIER",
+    "STORE - STORE MANAGER",
+    "STORE - SUPERVISOR AREA",
+    "STORE - SUPERVISOR CASHIER",
+    "STORE - SUPERVISOR EXPEDITION",
+    "STORE - SUPERVISOR HR & GA",
+    "STORE - SUPERVISOR VM"
+];
+
+const SELF_SCOPED_ROLES = [
+    "STORE - CASHIER",
+    "STORE - SALES ASSOCIATE"
+];
+
+function normalizeRoleName(role) {
+    return String(role || "").trim().toUpperCase().replace(/\s+/g, " ");
+}
+
+function isAdminRole(role) {
+    return normalizeRoleName(role) === "ADMIN";
+}
+
+function isSpvVerifierRole(role) {
+    const r = normalizeRoleName(role);
+    return SPV_VERIFIER_ROLES.includes(r) || r.includes("SUPERVISOR") || r.includes("MANAGER");
+}
+
+function isSelfScopedRole(role) {
+    const r = normalizeRoleName(role);
+    return SELF_SCOPED_ROLES.includes(r) || r.includes("CASHIER") || r.includes("SALES ASSOCIATE");
+}
+
+function populateRoleSelect(defaultRole = "STORE - CASHIER") {
+    const sel = document.getElementById("mu-role");
+    if (!sel) return;
+    const normDefault = normalizeRoleName(defaultRole);
+    const list = STORE_ROLES.includes(normDefault) || !normDefault
+        ? STORE_ROLES
+        : [normDefault, ...STORE_ROLES];
+    sel.innerHTML = list.map(r => `<option value="${r}">${r}</option>`).join("");
+    sel.value = normDefault || "STORE - CASHIER";
+}
+
 const GROUP_BY_TRXNUM_SHEETS = [
     "Item Correct",
     "Return",
@@ -736,13 +800,14 @@ function applyRoleView() {
     document.getElementById("user-info-box").classList.remove("hidden");
     document.getElementById("user-info-box").classList.add("flex");
 
+    const roleLabel = normalizeRoleName(currentUser.Role) || "STORE - CASHIER";
     document.getElementById("user-name-label").textContent = currentUser.Nama_Lengkap || currentUser.User_ID;
     document.getElementById("user-id-label").textContent = `ID: ${currentUser.User_ID}`;
-    document.getElementById("user-role-badge").textContent = currentUser.Role;
+    document.getElementById("user-role-badge").textContent = roleLabel;
 
-    const role = String(currentUser.Role || "").toUpperCase();
-    const isAdmin = role.includes("ADMIN");
-    const isSpv = role.includes("SPV");
+    const isAdmin = isAdminRole(roleLabel);
+    const isSpv = !isAdmin && isSpvVerifierRole(roleLabel);
+    const isSelfScoped = !isAdmin && !isSpv && isSelfScopedRole(roleLabel);
 
     const adminBtns = document.getElementById("admin-action-buttons");
     if (adminBtns) adminBtns.classList.toggle("hidden", !isAdmin);
@@ -755,22 +820,25 @@ function applyRoleView() {
     }
 
     if (isAdmin) {
-        document.getElementById("role-banner-title").textContent = "Mode ADMIN: Akses penuh ke seluruh 8 sheet transaksi, upload Excel harian, download laporan, dan kelola Master User.";
-        document.getElementById("role-banner-desc").textContent = "Anda dapat memantau remarks kasir, melakukan verifikasi SPV, mengunggah file Excel, mengekspor data, serta menghapus data per rentang tanggal.";
+        document.getElementById("role-banner-title").textContent = `Mode ${roleLabel}: Akses penuh ke seluruh 8 sheet transaksi, upload Excel harian, download laporan, dan kelola Master User.`;
+        document.getElementById("role-banner-desc").textContent = "Anda dapat memantau remarks, melakukan verifikasi SPV, mengunggah file Excel, mengekspor data, serta menghapus data per rentang tanggal.";
     } else if (isSpv) {
-        document.getElementById("role-banner-title").textContent = "Mode SPV: Verifikasi & paraf digital seluruh transaksi setelah remarks kasir terisi.";
-        document.getElementById("role-banner-desc").textContent = "Pilih transaksi yang sudah memiliki remarks kasir untuk melakukan Approval atau Rejection beserta paraf digital.";
-    } else {
-        document.getElementById("role-banner-title").textContent = "Mode KASIR / SA: Isi remarks/keterangan pada transaksi yang terkait ID Anda.";
+        document.getElementById("role-banner-title").textContent = `Mode ${roleLabel}: Verifikasi & paraf digital seluruh transaksi setelah remarks terisi.`;
+        document.getElementById("role-banner-desc").textContent = "Pilih transaksi yang sudah memiliki remarks untuk melakukan Approval atau Rejection beserta paraf digital.";
+    } else if (isSelfScoped) {
+        document.getElementById("role-banner-title").textContent = `Mode ${roleLabel}: Isi remarks/keterangan pada transaksi yang terkait ID Anda.`;
         document.getElementById("role-banner-desc").textContent = "Hanya transaksi yang cocok dengan CashNum / AuthID Anda yang ditampilkan.";
+    } else {
+        document.getElementById("role-banner-title").textContent = `Mode ${roleLabel}: Pemantauan & pengisian remarks audit transaksi.`;
+        document.getElementById("role-banner-desc").textContent = "Anda dapat memantau data transaksi pada sheet audit dan mengisi remarks/keterangan sesuai kebutuhan.";
     }
 }
 
 function getAccessibleRowsForSheet(sheetName) {
     const rows = db.sheets[sheetName] || [];
     if (!currentUser) return [];
-    const role = String(currentUser.Role || "").toUpperCase();
-    if (role.includes("ADMIN") || role.includes("SPV")) return rows;
+    const role = normalizeRoleName(currentUser.Role);
+    if (isAdminRole(role) || isSpvVerifierRole(role) || !isSelfScopedRole(role)) return rows;
     const myId = normalizeIdToken(currentUser.User_ID).toLowerCase();
     return rows.filter(r => {
         const cId = normalizeIdToken(r.CashNum).toLowerCase();
@@ -991,9 +1059,9 @@ function buildItemBoxHtml(grp) {
 }
 
 function buildActionButtonsHtml(grp) {
-    const role = String((currentUser && currentUser.Role) || "").toUpperCase();
-    const isAdmin = role.includes("ADMIN");
-    const isSpv = role.includes("SPV");
+    const role = normalizeRoleName(currentUser && currentUser.Role);
+    const isAdmin = isAdminRole(role);
+    const isSpv = !isAdmin && isSpvVerifierRole(role);
     const canRemark = isAdmin || (!isSpv);
     const canVerify = isAdmin || isSpv;
     const hasRemarks = Boolean(String(grp.Remarks_Kasir || "").trim());
@@ -1637,7 +1705,7 @@ function openUserModal(idx = -1) {
     const u = idx >= 0 ? db.users[idx] : null;
     document.getElementById("mu-userid").value = u ? u.User_ID : "";
     document.getElementById("mu-nama").value = u ? u.Nama_Lengkap : "";
-    document.getElementById("mu-role").value = u ? u.Role : "KASIR / SA";
+    populateRoleSelect(u ? u.Role : "STORE - CASHIER");
     document.getElementById("mu-pin").value = u ? u.PIN_Password : "123456";
     document.getElementById("mu-status").value = u ? u.Status_Aktif : "AKTIF";
     openModal("user-modal");
@@ -1646,7 +1714,7 @@ function openUserModal(idx = -1) {
 async function submitSaveUser() {
     const userId = normalizeIdToken(document.getElementById("mu-userid").value);
     const nama = document.getElementById("mu-nama").value.trim();
-    const role = document.getElementById("mu-role").value;
+    const role = normalizeRoleName(document.getElementById("mu-role").value);
     const pin = normalizeIdToken(document.getElementById("mu-pin").value) || "123456";
     const status = document.getElementById("mu-status").value;
 
