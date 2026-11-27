@@ -55,28 +55,6 @@
         </div>
     </div>
 
-    <!-- Result Status Pop-up Modal (Upload / Hapus Berhasil atau Gagal) -->
-    <div id="result-popup-modal" class="fixed inset-0 z-[78] hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
-            <div id="result-popup-header" class="px-5 py-4 bg-emerald-600 text-white flex items-center justify-between">
-                <div class="flex items-center gap-2.5">
-                    <span id="result-popup-icon" class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center font-extrabold text-sm">✓</span>
-                    <h3 id="result-popup-title" class="text-sm sm:text-base font-extrabold">Proses Berhasil</h3>
-                </div>
-                <button type="button" onclick="closeResultPopup()" class="text-xs font-bold text-white/90 hover:text-white">Tutup</button>
-            </div>
-            <div class="p-5 space-y-3 text-xs sm:text-sm">
-                <p id="result-popup-message" class="text-slate-700 leading-relaxed font-medium"></p>
-                <div id="result-popup-details" class="hidden max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs bg-slate-50"></div>
-                <div class="flex justify-end pt-2">
-                    <button type="button" onclick="closeResultPopup()" id="result-popup-ok-btn" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 shadow-sm transition">
-                        OK, Mengerti
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- ===================================================== -->
     <!-- HEADER NAVIGASI & STATUS KONEKSI                      -->
     <!-- ===================================================== -->
@@ -225,9 +203,6 @@
                 </button>
                 <button type="button" onclick="openExportModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm transition">
                     Export / Download (.xlsx)
-                </button>
-                <button type="button" onclick="openDeleteRangeModal()" class="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition">
-                    Hapus Data (Rentang Tanggal)
                 </button>
             </div>
         </div>
@@ -432,7 +407,7 @@
     </div>
 
     <!-- ===================================================== -->
-    <!-- MODAL 3: UPLOAD EXCEL HARIAN (ANTI DUPLIKAT)          -->
+    <!-- MODAL 3: UPLOAD EXCEL HARIAN (ANTI DUPLIKAT & BATCH)  -->
     <!-- ===================================================== -->
     <div id="upload-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full my-6 overflow-hidden">
@@ -440,44 +415,26 @@
                 <h3 class="font-bold text-slate-900 text-sm sm:text-base">Upload Excel Harian • Anti-Duplikat per Sheet</h3>
                 <button type="button" onclick="closeUploadModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
             </div>
-            <div class="p-5 space-y-4 text-xs">
-                <p class="text-slate-600 leading-relaxed">
-                    Pilih tujuan sheet (bisa <strong>1 sheet tertentu</strong> untuk file satuan, beberapa sheet, atau <strong>Semua Sheet</strong>), lalu pilih file <strong>.xlsx / .xls / .csv</strong>. Baris yang sudah ada akan otomatis <strong>ditolak (rejected duplicate)</strong>.
+            <div class="p-5 space-y-4">
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Pilih file <strong>.xlsx</strong> aktivitas kasir harian. Data dikirim secara bertahap per batch agar tidak timeout dan diperiksa menggunakan <em>composite unique key</em> agar duplikat otomatis ditolak.
                 </p>
 
-                <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label class="font-bold text-slate-800">Target Sheet yang Akan Di-upload <span class="text-rose-500">*</span></label>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="toggleUploadSheetCheckboxes(true)" class="text-[11px] font-bold text-emerald-700 hover:underline">Pilih Semua</button>
-                            <span class="text-slate-300">|</span>
-                            <button type="button" onclick="selectOnlyCurrentUploadSheet()" class="text-[11px] font-bold text-indigo-600 hover:underline">Hanya Sheet Aktif</button>
-                            <span class="text-slate-300">|</span>
-                            <button type="button" onclick="toggleUploadSheetCheckboxes(false)" class="text-[11px] font-bold text-slate-500 hover:underline">Kosongkan</button>
-                        </div>
-                    </div>
-                    <div id="upload-sheets-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 max-h-44 overflow-y-auto"></div>
-                    <p id="upload-single-sheet-hint" class="text-[11px] text-indigo-700 font-medium mt-1.5 hidden"></p>
-                </div>
-
-                <label class="block border-2 border-dashed border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 rounded-2xl p-5 text-center cursor-pointer transition">
-                    <span class="block text-xs sm:text-sm font-bold text-emerald-800">1. Pilih File Excel (.xlsx / .xls / .csv)</span>
+                <label class="block border-2 border-dashed border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 rounded-2xl p-6 text-center cursor-pointer transition">
+                    <span class="block text-xs sm:text-sm font-bold text-emerald-800">Pilih File Excel (.xlsx / .xls)</span>
                     <span id="upload-file-name" class="block text-xs text-slate-500 mt-1">Belum ada file dipilih</span>
-                    <input type="file" id="excel-input-file" accept=".xlsx,.xls,.csv" onchange="handleExcelFileSelected(event)" class="sr-only">
+                    <input type="file" id="excel-input-file" accept=".xlsx,.xls,.csv" onchange="processExcelUpload(event)" class="sr-only">
                 </label>
+
+                <p id="upload-progress-text" class="hidden text-xs font-bold text-indigo-700"></p>
 
                 <div id="upload-summary-wrap" class="hidden space-y-2">
                     <div id="upload-totals-banner" class="p-3 rounded-xl bg-slate-900 text-white text-xs font-bold flex flex-wrap justify-between gap-2"></div>
-                    <div id="upload-per-sheet-list" class="max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs"></div>
+                    <div id="upload-per-sheet-list" class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs"></div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                    <button type="button" onclick="closeUploadModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Tutup</button>
-                    <button type="button" id="btn-submit-upload" onclick="submitExcelUpload()" disabled
-                        class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed shadow-sm transition flex items-center gap-2">
-                        <span id="upload-submit-spinner" class="hidden w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        <span id="upload-submit-label">Submit Upload</span>
-                    </button>
+                <div class="flex justify-end">
+                    <button type="button" onclick="closeUploadModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-900">Selesai</button>
                 </div>
             </div>
         </div>
@@ -520,60 +477,6 @@
                             Download .xlsx
                         </button>
                     </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ===================================================== -->
-    <!-- MODAL 3C: HAPUS DATA PER SHEET & RENTANG TANGGAL      -->
-    <!-- ===================================================== -->
-    <div id="delete-range-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full my-6 overflow-hidden">
-            <div class="px-5 py-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between">
-                <h3 class="font-bold text-rose-900 text-sm sm:text-base">Hapus Data per Sheet & Rentang Tanggal</h3>
-                <button type="button" onclick="closeDeleteRangeModal()" class="px-2 py-1 text-xs font-bold text-rose-600 hover:text-rose-900">Tutup</button>
-            </div>
-            <form onsubmit="submitDeleteByDateRange(event)" class="p-5 space-y-4 text-xs">
-                <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 leading-relaxed">
-                    <strong>Perhatian:</strong> Data pada sheet dan rentang tanggal (<code>TrxDate</code>) yang dipilih akan dihapus dari database lokal maupun Google Sheets.
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label class="font-bold text-slate-800">Pilih Sheet yang Akan Dihapus <span class="text-rose-500">*</span></label>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="toggleDeleteSheetCheckboxes(true)" class="text-[11px] font-bold text-indigo-600 hover:underline">Pilih Semua</button>
-                            <span class="text-slate-300">|</span>
-                            <button type="button" onclick="toggleDeleteSheetCheckboxes(false)" class="text-[11px] font-bold text-slate-500 hover:underline">Kosongkan</button>
-                        </div>
-                    </div>
-                    <div id="delete-sheets-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 max-h-48 overflow-y-auto"></div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-1">Dari Tanggal <span class="text-rose-500">*</span></label>
-                        <input type="date" id="delete-start-date" required oninput="updateDeletePreviewCount()"
-                            class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-1">Sampai Tanggal <span class="text-rose-500">*</span></label>
-                        <input type="date" id="delete-end-date" required oninput="updateDeletePreviewCount()"
-                            class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 outline-none">
-                    </div>
-                </div>
-
-                <div id="delete-preview-box" class="p-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold">
-                    Pilih sheet dan rentang tanggal untuk melihat jumlah baris yang akan dihapus.
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                    <button type="button" onclick="closeDeleteRangeModal()" class="px-4 py-2 rounded-xl font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
-                    <button type="submit" id="btn-submit-delete-range" class="px-5 py-2.5 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed shadow-sm transition flex items-center gap-2">
-                        <span id="delete-submit-spinner" class="hidden w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        <span id="delete-submit-label">Submit Hapus Data</span>
-                    </button>
                 </div>
             </form>
         </div>
@@ -754,14 +657,6 @@
             return s;
         }
 
-        function normalizeRoleName(rawRole) {
-            const r = String(rawRole || "").trim().toUpperCase();
-            if (!r) return "KASIR / SA";
-            if (r === "ADMIN" || r.includes("STORE MANAGER")) return "ADMIN";
-            if (r === "SPV" || r.includes("SUPERVISOR")) return "SPV";
-            return "KASIR / SA";
-        }
-
         function nowString() {
             const d = new Date();
             const p = n => String(n).padStart(2, "0");
@@ -822,291 +717,79 @@
             return "";
         }
 
-        function isSummaryOrMetaRow(raw, trxNum, cashNum) {
-            const texts = [
-                trxNum,
-                cashNum,
-                getFieldCI(raw, ["Description", "ItemName", "Deskripsi", "Date", "Store", "StoreCodeCounterNo", "User"])
-            ].map(v => String(v || "").trim().toLowerCase());
-
-            const metaPrefixes = [
-                "total for",
-                "total",
-                "store :",
-                "storecode-counter no",
-                "date :",
-                "time :",
-                "user :",
-                "matahari dept stores",
-                "parked invoice report detail",
-                "unmatch journal",
-                "void bill"
-            ];
-
-            return texts.some(t => metaPrefixes.some(p => t.startsWith(p)));
-        }
-
-        // Penyesuaian mapping per sheet sesuai struktur header masing-masing sheet di Google Sheets
         function resolveTransactionRowFields(sheetName, raw) {
             if (!raw || typeof raw !== "object") return raw;
             const normSheet = String(sheetName || "").trim().toLowerCase();
 
-            // 1. Unmatch Transaksi (Unmatch Journal): No | TrxDate | TrxTime | StoreIdnt | StoreName | SKU | RegNum | CashNum | CounterID
-            if (normSheet === "unmatch transaksi") {
-                const noVal = String(getFieldCI(raw, ["No", "TRXNUM", "TrxNum"]) || "").trim();
-                const dt = formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Date"]));
-                const tm = formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Time"]));
-                const sku = String(getFieldCI(raw, ["SKU"]) || "").trim();
-                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
-                const reg = String(getFieldCI(raw, ["RegNum", "REGNUM"]) || "").trim();
-                const cash = String(getFieldCI(raw, ["CashNum"]) || "").trim();
-                return {
-                    ...raw,
-                    TrxDate: dt || formatExcelDate(raw.TrxDate),
-                    TrxTime: tm || formatExcelTime(raw.TrxTime),
-                    TRXNUM: noVal ? `NO-${noVal}` : (raw.TRXNUM || ""),
-                    SKU: sku || raw.SKU,
-                    RegNum: counter || reg || raw.RegNum,
-                    CashNum: cash || raw.CashNum,
-                    Description: reg ? `RegNum: ${reg}` : (raw.Description || "-"),
-                    Price: 0,
-                    Amount: 0,
-                    Disc: 0,
-                    NetAmount: 0,
-                    hasNominal: false
-                };
-            }
-
-            // 2. Parked Invoice: Counter & Date' | Cashier Name and ID | Parked Invoice Number | Time Of Parking | Amount
             if (normSheet === "parked invoice") {
-                const counterDateRaw = String(getFieldCI(raw, ["Counter & Date'", "Counter & Date", "CounterDate", "Counter & Date "]) || "").trim();
-                let parsedCounter = raw.RegNum || "";
-                let parsedDate = raw.TrxDate || "";
-                if (counterDateRaw) {
-                    const parts = counterDateRaw.split(/\s+/);
-                    if (parts.length >= 2) {
-                        parsedCounter = parts[0];
-                        parsedDate = parts.slice(1).join(" ");
-                    } else {
-                        parsedDate = counterDateRaw;
+                const trxNumRaw = getFieldCI(raw, ["ParkedInvoiceNumber", "Parked Invoice Number", "TRXNUM", "TrxNum", "NoTrx"]);
+                const vals = Object.values(raw);
+                const trxNum = String(trxNumRaw || (vals.length > 3 ? vals[3] : "") || "").trim();
+
+                let nominalColF = 0;
+                const colFByHeader = getFieldCI(raw, ["ParkedInvoice", "Parked Invoice", "ParkedAmount", "Amount", "TotalAmount", "NetAmount"]);
+                if (colFByHeader !== "" && colFByHeader !== null && colFByHeader !== undefined) {
+                    const candidate = parseCurrencyNumber(colFByHeader);
+                    if (String(candidate) !== trxNum && candidate > 0) {
+                        nominalColF = candidate;
+                    }
+                }
+                if (!nominalColF && vals.length > 5) {
+                    const candidateIdx5 = parseCurrencyNumber(vals[5]);
+                    if (String(candidateIdx5) !== trxNum && candidateIdx5 > 0) {
+                        nominalColF = candidateIdx5;
+                    }
+                }
+                if (!nominalColF) {
+                    const existingAmt = parseCurrencyNumber(raw.Amount ?? raw.Price ?? raw.NetAmount);
+                    if (String(existingAmt) !== trxNum) {
+                        nominalColF = existingAmt;
                     }
                 }
 
-                const cashierRaw = String(getFieldCI(raw, ["Cashier Name and ID", "CashierNameandID", "Cashier"]) || "").trim();
-                let parsedCash = raw.CashNum || "";
-                let parsedCashName = "";
-                if (cashierRaw) {
-                    const idMatch = cashierRaw.match(/(\d{3,10})/);
-                    if (idMatch) {
-                        parsedCash = idMatch[1];
-                        parsedCashName = cashierRaw.replace(idMatch[1], "").replace(/[-()]/g, " ").trim();
-                    } else {
-                        parsedCash = cashierRaw;
-                    }
-                }
-
-                const trxNum = String(getFieldCI(raw, ["Parked Invoice Number", "ParkedInvoiceNumber", "TRXNUM", "TrxNum"]) || "").trim();
-                const parkTime = formatExcelTime(getFieldCI(raw, ["Time Of Parking", "TimeOfParking", "TrxTime"]));
-                const amountVal = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT", "Parked Invoice", "ParkedInvoice"]));
+                const discVal = parseCurrencyNumber(getFieldCI(raw, ["Disc", "TotalDisc", "DiscManual", "DiscAuto"]) || raw.Disc || 0);
+                const netVal = Math.max(0, nominalColF - discVal);
 
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(parsedDate) || formatExcelDate(raw.TrxDate),
-                    TrxTime: parkTime || formatExcelTime(raw.TrxTime),
-                    RegNum: parsedCounter || raw.RegNum,
-                    TRXNUM: trxNum || raw.TRXNUM,
-                    SKU: "PARKED",
-                    Description: parsedCashName ? `Kasir: ${parsedCashName}` : (cashierRaw || `Parked Invoice ${trxNum}`),
-                    CashNum: parsedCash || raw.CashNum,
-                    Price: amountVal,
-                    Amount: amountVal,
-                    Disc: 0,
-                    NetAmount: amountVal,
-                    hasNominal: true
+                    TRXNUM: trxNum || raw.TRXNUM || "",
+                    Price: nominalColF,
+                    Amount: nominalColF,
+                    Disc: discVal,
+                    NetAmount: netVal
                 };
             }
 
-            // 3. Item Correct: TRXDATE | CreateTime | Store | StoreName | SKU | TRXNUM | REGNUM | PurchaseType | CounterID | CustRef | CashNum | QTY | PRICE | AMOUNT | DISC | ROLE | AuthID | AuthName
-            if (normSheet === "item correct") {
-                const qty = parseCurrencyNumber(getFieldCI(raw, ["QTY", "Qty"]) || 1) || 1;
-                const price = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price"]));
-                const amount = parseCurrencyNumber(getFieldCI(raw, ["AMOUNT", "Amount"])) || (price * qty);
-                const disc = parseCurrencyNumber(getFieldCI(raw, ["DISC", "Disc"]));
-                const net = Math.max(0, amount - disc);
-                const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
-                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
-                const reg = String(getFieldCI(raw, ["REGNUM", "RegNum"]) || "").trim();
-                return {
-                    ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || formatExcelDate(raw.TrxDate),
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["CreateTime", "TrxTime"])) || formatExcelTime(raw.TrxTime),
-                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
-                    TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
-                    RegNum: counter || reg || raw.RegNum,
-                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
-                    AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
-                    Description: [reg ? `Reg: ${reg}` : "", `Qty: ${qty}`, pType].filter(Boolean).join(" • "),
-                    Qty: qty,
-                    Price: price,
-                    Amount: amount,
-                    Disc: disc,
-                    NetAmount: net,
-                    hasNominal: true
-                };
-            }
-
-            // 4. Void-Bill Cancelation: TRXDATE | TrxTime | Store | StoreName | SKU | TRXNUM | REGNUM | PurchaseType | CounterID | CustRef | CashNum | QTY | PRICE | AMOUNT | ROLE | AuthID | AuthName | Description
-            if (normSheet === "void-bill cancelation") {
-                const qty = parseCurrencyNumber(getFieldCI(raw, ["QTY", "Qty"]) || 1) || 1;
-                const price = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price"]));
-                const amount = parseCurrencyNumber(getFieldCI(raw, ["AMOUNT", "Amount"])) || (price * qty);
-                const desc = String(getFieldCI(raw, ["Description"]) || "").trim();
-                const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
-                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
-                const reg = String(getFieldCI(raw, ["REGNUM", "RegNum"]) || "").trim();
-                return {
-                    ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || formatExcelDate(raw.TrxDate),
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || formatExcelTime(raw.TrxTime),
-                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
-                    TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
-                    RegNum: counter || reg || raw.RegNum,
-                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
-                    AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
-                    Description: desc || [reg ? `Reg: ${reg}` : "", `Qty: ${qty}`, pType].filter(Boolean).join(" • "),
-                    Qty: qty,
-                    Price: price,
-                    Amount: amount,
-                    Disc: 0,
-                    NetAmount: amount,
-                    hasNominal: true
-                };
-            }
-
-            // 5. Return: TRXDATE | CreateTime | Store | StoreName | SKU | TRXNUM | REGNUM | PurchaseType | CounterID | CustRef | CashNum | Qty | PRICE | Amount | Disc | NetAmount | Role | AuthID | AuthName
-            if (normSheet === "return") {
-                const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY"]) || 1) || 1;
-                const price = parseCurrencyNumber(getFieldCI(raw, ["PRICE", "Price"]));
-                const amount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT"])) || (price * qty);
-                const disc = parseCurrencyNumber(getFieldCI(raw, ["Disc", "DISC"]));
-                const netRaw = getFieldCI(raw, ["NetAmount"]);
-                const net = netRaw !== "" ? parseCurrencyNumber(netRaw) : Math.max(0, amount - disc);
-                const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
-                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
-                const reg = String(getFieldCI(raw, ["REGNUM", "RegNum"]) || "").trim();
-                return {
-                    ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || formatExcelDate(raw.TrxDate),
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["CreateTime", "TrxTime"])) || formatExcelTime(raw.TrxTime),
-                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
-                    TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
-                    RegNum: counter || reg || raw.RegNum,
-                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
-                    AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
-                    Description: [reg ? `Reg: ${reg}` : "", `Qty: ${qty}`, pType].filter(Boolean).join(" • "),
-                    Qty: qty,
-                    Price: price,
-                    Amount: amount,
-                    Disc: disc,
-                    NetAmount: net,
-                    hasNominal: true
-                };
-            }
-
-            // 6. Price Overide: TRXDATE | TrxTime | Store | StoreName | SKU | TRXNUM | REGNUM | CounterID | CashNum | OrigPrice | NewPrice | Role | AuthID | AuthName
-            if (normSheet === "price overide") {
-                const origPrice = parseCurrencyNumber(getFieldCI(raw, ["OrigPrice", "Orig Price"]));
-                const newPrice = parseCurrencyNumber(getFieldCI(raw, ["NewPrice", "New Price"]));
-                const selisih = Math.max(0, origPrice - newPrice);
-                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
-                const reg = String(getFieldCI(raw, ["REGNUM", "RegNum"]) || "").trim();
-                return {
-                    ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || formatExcelDate(raw.TrxDate),
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || formatExcelTime(raw.TrxTime),
-                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
-                    TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
-                    RegNum: counter || reg || raw.RegNum,
-                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
-                    AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
-                    Description: `Orig: ${formatRupiah(origPrice)} → New: ${formatRupiah(newPrice)}`,
-                    Price: origPrice,
-                    Amount: origPrice,
-                    Disc: selisih,
-                    NetAmount: newPrice || origPrice,
-                    hasNominal: true
-                };
-            }
-
-            // 7. Print Duplicate: TrxDate | TrxTime | Store | StoreName | CashNum | TrxNum | CounterId | Role | AuthId | AuthName
-            if (normSheet === "print duplicate") {
-                const counter = String(getFieldCI(raw, ["CounterId", "CounterID", "Counter ID"]) || "").trim();
-                const roleStr = String(getFieldCI(raw, ["Role"]) || "").trim();
-                return {
-                    ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE"])) || formatExcelDate(raw.TrxDate),
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || formatExcelTime(raw.TrxTime),
-                    CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
-                    TRXNUM: String(getFieldCI(raw, ["TrxNum", "TRXNUM"]) || raw.TRXNUM || "").trim(),
-                    RegNum: counter || raw.RegNum,
-                    AuthID: String(getFieldCI(raw, ["AuthId", "AuthID"]) || raw.AuthID || "").trim(),
-                    SKU: "REPRINT",
-                    Description: roleStr ? `Role: ${roleStr}` : "Print Duplicate",
-                    Price: 0,
-                    Amount: 0,
-                    Disc: 0,
-                    NetAmount: 0,
-                    hasNominal: false
-                };
-            }
-
-            // 8. Disc Manual: Trx Date | Trx Time | Store | Store Name | Reg Num | Trx Num | CustNum | SKU | Purch Type | Cash Num | QTY | Price | Amount | Disc Auto | Disc Manual | Total Disc | Disc Prc | Payment | Role | AuthId | Auth Name
             if (normSheet === "disc manual") {
-                const qty = parseCurrencyNumber(getFieldCI(raw, ["QTY", "Qty"]) || 1) || 1;
-                const price = parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE"]));
-                const amount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT"])) || (price * qty);
-                const totalDiscRaw = getFieldCI(raw, ["Total Disc", "TotalDisc"]);
-                const discManualRaw = getFieldCI(raw, ["Disc Manual", "DiscManual"]);
-                const discAutoRaw = getFieldCI(raw, ["Disc Auto", "DiscAuto"]);
-                const disc = totalDiscRaw !== ""
-                    ? parseCurrencyNumber(totalDiscRaw)
-                    : (discManualRaw !== "" ? parseCurrencyNumber(discManualRaw) : parseCurrencyNumber(discAutoRaw));
-                const paymentRaw = getFieldCI(raw, ["Payment", "NetAmount"]);
-                const net = paymentRaw !== "" ? parseCurrencyNumber(paymentRaw) : Math.max(0, amount - disc);
-                const discPrc = String(getFieldCI(raw, ["Disc Prc", "DiscPrc"]) || "").trim();
-                const pType = String(getFieldCI(raw, ["Purch Type", "PurchaseType"]) || "").trim();
-                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
-                const reg = String(getFieldCI(raw, ["Reg Num", "RegNum"]) || "").trim();
+                const price = parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE", "OrigPrice", "NewPrice"]) || raw.Price || 0);
+                const amount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT"]) || raw.Amount || price);
+                const discManual = parseCurrencyNumber(getFieldCI(raw, ["Disc Manual", "DiscManual"]) || raw.DiscManual || 0);
+                const totalDisc = parseCurrencyNumber(getFieldCI(raw, ["Total Disc", "TotalDisc"]) || raw.TotalDisc || 0);
+                const discAuto = parseCurrencyNumber(getFieldCI(raw, ["Disc Auto", "DiscAuto"]) || raw.DiscAuto || 0);
+                const directDisc = parseCurrencyNumber(getFieldCI(raw, ["Disc", "Discount", "Potongan"]) || raw.Disc || 0);
+
+                const disc = totalDisc > 0
+                    ? totalDisc
+                    : (discManual > 0 ? discManual : (discAuto > 0 ? discAuto : directDisc));
+
+                const paymentRaw = getFieldCI(raw, ["Payment", "NetAmount", "Net"]);
+                const netVal = (paymentRaw !== "" && paymentRaw !== null && paymentRaw !== undefined)
+                    ? parseCurrencyNumber(paymentRaw)
+                    : Math.max(0, amount - disc);
+
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["Trx Date", "TrxDate"])) || formatExcelDate(raw.TrxDate),
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["Trx Time", "TrxTime"])) || formatExcelTime(raw.TrxTime),
-                    RegNum: counter || reg || raw.RegNum,
-                    TRXNUM: String(getFieldCI(raw, ["Trx Num", "TrxNum", "TRXNUM"]) || raw.TRXNUM || "").trim(),
-                    SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
-                    CashNum: String(getFieldCI(raw, ["Cash Num", "CashNum"]) || raw.CashNum || "").trim(),
-                    AuthID: String(getFieldCI(raw, ["AuthId", "AuthID", "Auth Id"]) || raw.AuthID || "").trim(),
-                    Description: [
-                        `Qty: ${qty}`,
-                        discManualRaw !== "" ? `Disc Manual: ${formatRupiah(parseCurrencyNumber(discManualRaw))}` : "",
-                        discPrc ? `(${discPrc}%)` : "",
-                        pType
-                    ].filter(Boolean).join(" • "),
-                    Qty: qty,
-                    Price: price,
-                    Amount: amount,
+                    Price: price || amount,
+                    Amount: amount || price,
                     Disc: disc,
-                    NetAmount: net,
-                    hasNominal: true
+                    DiscManual: discManual,
+                    TotalDisc: totalDisc,
+                    DiscAuto: discAuto,
+                    NetAmount: netVal
                 };
             }
 
-            return {
-                ...raw,
-                TrxDate: formatExcelDate(raw.TrxDate),
-                TrxTime: formatExcelTime(raw.TrxTime),
-                hasNominal: true
-            };
+            return raw;
         }
 
         function formatExcelDate(val) {
@@ -1118,14 +801,13 @@
                 return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
             }
             const s = String(val).trim();
-            // Handle ISO date string from Google Sheets e.g. "2026-11-01T00:00:00.000Z" or "2026-10-31T17:00:00.000Z"
-            if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
-                const d = new Date(s);
-                if (!isNaN(d.getTime())) {
-                    const p = n => String(n).padStart(2, "0");
-                    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-                }
-                return s.slice(0, 10);
+            const shortYearSlash = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2})$/);
+            if (shortYearSlash) {
+                let first = parseInt(shortYearSlash[1], 10);
+                let second = parseInt(shortYearSlash[2], 10);
+                let month = first, day = second;
+                if (first > 12 && second <= 12) { month = second; day = first; }
+                return `20${shortYearSlash[3]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             }
             return s;
         }
@@ -1140,13 +822,7 @@
                 const p = n => String(n).padStart(2, "0");
                 return `${p(h)}:${p(m)}:${p(s)}`;
             }
-            const s = String(val).trim();
-            // Handle Google Sheets epoch time string e.g. "1899-12-30T20:41:45.000Z"
-            const isoTimeMatch = s.match(/^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2}:\d{2})/);
-            if (isoTimeMatch) {
-                return isoTimeMatch[1];
-            }
-            return s;
+            return String(val).trim();
         }
 
         // =====================================================
@@ -1185,10 +861,10 @@
                     ],
                     "Parked Invoice": [
                         {
-                            id: "PK-1", TrxDate: "2026-10-04", TrxTime: "18:23", RegNum: "312-8",
-                            TRXNUM: "304072", SKU: "PARKED", Description: "Parked Invoice 304072",
-                            Price: 4431230, Amount: 4431230, Disc: 0, NetAmount: 4431230,
-                            CashNum: "171385", AuthID: "119710",
+                            id: "PK-1", TrxDate: "2026-11-27", TrxTime: "11:12:30", RegNum: "POS-01",
+                            TRXNUM: "PRK-201", SKU: "8992200310", Description: "Gamis Motif M",
+                            Price: 369000, Amount: 369000, Disc: 0, NetAmount: 369000,
+                            CashNum: "221521", AuthID: "119710",
                             Remarks_Kasir: "", Waktu_Remarks_Kasir: "",
                             Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
                             Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
@@ -1218,11 +894,7 @@
                     const parsed = JSON.parse(raw);
                     if (parsed && Array.isArray(parsed.users) && parsed.sheets && typeof parsed.sheets === "object") {
                         TRANSACTION_SHEETS.forEach(s => {
-                            if (!Array.isArray(parsed.sheets[s])) {
-                                parsed.sheets[s] = [];
-                            } else {
-                                parsed.sheets[s] = parsed.sheets[s].map((r, i) => normalizeServerRow(s, r, i));
-                            }
+                            if (!Array.isArray(parsed.sheets[s])) parsed.sheets[s] = [];
                         });
                         return parsed;
                     }
@@ -1292,6 +964,15 @@
                 const m = String(dmyMatch[2]).padStart(2, "0");
                 const y = dmyMatch[3];
                 return `${y}-${m}-${d}`;
+            }
+
+            const dmyShort = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2})$/);
+            if (dmyShort) {
+                let first = parseInt(dmyShort[1], 10);
+                let second = parseInt(dmyShort[2], 10);
+                let month = first, day = second;
+                if (first > 12 && second <= 12) { month = second; day = first; }
+                return `20${dmyShort[3]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             }
 
             const parsed = new Date(s);
@@ -1393,48 +1074,6 @@
             };
         }
 
-        function showResultPopup({ success = true, title = "", message = "", detailsHtml = "" }) {
-            const modal = document.getElementById("result-popup-modal");
-            const header = document.getElementById("result-popup-header");
-            const icon = document.getElementById("result-popup-icon");
-            const titleEl = document.getElementById("result-popup-title");
-            const msgEl = document.getElementById("result-popup-message");
-            const detailsEl = document.getElementById("result-popup-details");
-            const okBtn = document.getElementById("result-popup-ok-btn");
-
-            if (success) {
-                header.className = "px-5 py-4 bg-emerald-600 text-white flex items-center justify-between";
-                icon.textContent = "✓";
-                okBtn.className = "px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition";
-            } else {
-                header.className = "px-5 py-4 bg-rose-600 text-white flex items-center justify-between";
-                icon.textContent = "!";
-                okBtn.className = "px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition";
-            }
-
-            titleEl.textContent = title || (success ? "Berhasil" : "Gagal");
-            msgEl.innerHTML = message || "";
-
-            if (detailsHtml) {
-                detailsEl.innerHTML = detailsHtml;
-                detailsEl.classList.remove("hidden");
-            } else {
-                detailsEl.innerHTML = "";
-                detailsEl.classList.add("hidden");
-            }
-
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-        }
-
-        function closeResultPopup() {
-            const modal = document.getElementById("result-popup-modal");
-            if (modal) {
-                modal.classList.add("hidden");
-                modal.classList.remove("flex");
-            }
-        }
-
         function showConnectionError(detailText) {
             const banner = document.getElementById("conn-error-banner");
             const detail = document.getElementById("conn-error-detail");
@@ -1451,7 +1090,6 @@
             setSimulationMode(true);
             hideConnectionError();
             updateConnectionBadge();
-            updateLastSyncBadge("Lokal");
             showToast("Beralih sementara ke Mode Simulasi Lokal.", "info");
         }
 
@@ -1468,7 +1106,7 @@
             }
 
             const controller = new AbortController();
-            const timerId = setTimeout(() => controller.abort(), 20000);
+            const timerId = setTimeout(() => controller.abort(), 45000);
 
             try {
                 const response = await fetch(url, {
@@ -1478,29 +1116,26 @@
                     body: JSON.stringify(payload),
                     signal: controller.signal
                 });
-
                 const rawText = await response.text();
-                let json = null;
+                let json;
                 try {
                     json = JSON.parse(rawText);
                 } catch (_) {
-                    const errMsg = "Respon server bukan JSON valid (cek izin akses Web App: Anyone).";
-                    showConnectionError(errMsg);
-                    return { ok: false, error: errMsg };
+                    showConnectionError("Respon server bukan JSON valid (pastikan deploy Web App diakses oleh Anyone dan versi terbaru).");
+                    return { ok: false, error: "Invalid JSON response" };
                 }
 
                 if (!response.ok || (json && (json.ok === false || json.status === "error"))) {
-                    const msg = (json && (json.error || json.message)) || `HTTP ${response.status}`;
-                    showConnectionError(`Server Apps Script mengembalikan error: ${msg}`);
-                    return { ok: false, error: msg };
+                    const errMsg = json.error || json.message || "Respon error dari Apps Script";
+                    showConnectionError(`Server Apps Script mengembalikan error: ${errMsg}`);
+                    return { ok: false, error: errMsg };
                 }
-
                 hideConnectionError();
                 return { ok: true, data: json.data !== undefined ? json.data : json };
             } catch (err) {
                 console.error("GAS API Error:", err);
                 const msg = err.name === "AbortError"
-                    ? "Permintaan ke Apps Script melebihi batas waktu (timeout 20 detik)."
+                    ? "Permintaan ke Apps Script melebihi batas waktu (timeout 45 detik)."
                     : "Tidak dapat menjangkau server Apps Script. Pastikan URL /exec benar dan deploy diakses oleh Anyone.";
                 showConnectionError(msg);
                 return { ok: false, error: err.message || msg };
@@ -1510,35 +1145,22 @@
         }
 
         function normalizeServerRow(sheetName, raw, idx = 0) {
-            const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY", "Quantity"]) || 1) || 1;
-            const rawPrice = parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE", "UnitPrice", "OrigPrice", "NewPrice"]));
-            const rawAmount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT", "GrossAmount", "TotalAmount", "ParkedInvoice", "Parked Invoice"]));
-            const rawDisc = parseCurrencyNumber(getFieldCI(raw, [
-                "TotalDisc", "Total Disc", "DiscManual", "Disc Manual", "DiscAmount", "Disc", "DISC", "Discount"
-            ]));
-            const rawNet = parseCurrencyNumber(getFieldCI(raw, ["NetAmount", "Payment", "Net", "TotalNet"]));
-
-            const amount = rawAmount || (rawPrice ? rawPrice * qty : 0);
-            const price = rawPrice || (amount && qty ? amount / qty : amount);
-            const netAmount = rawNet || (amount ? Math.max(0, amount - rawDisc) : 0);
-
             const base = {
                 id: String(getFieldCI(raw, ["id", "_id", "rowId"]) || `${sheetName.slice(0, 2).toUpperCase()}-${idx + 1}`),
                 _rowIndex: raw._rowIndex || (idx + 2),
-                TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Trx Date", "Date", "Tanggal"])),
-                TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Trx Time", "CreateTime", "TimeOfParking", "Time Of Parking", "Time", "Jam"])),
-                RegNum: String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID", "RegNum", "REGNUM", "Reg Num", "POS", "StoreCounter"]) || "-").trim(),
-                TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum", "Trx Num", "NoTrx", "ParkedInvoiceNumber", "Parked Invoice Number"]) || "").trim(),
+                TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Date", "Tanggal"])),
+                TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Time", "TimeOfParking", "CreateTime", "Jam"])),
+                RegNum: String(getFieldCI(raw, ["RegNum", "REGNUM", "POS", "StoreCounter", "Counter"]) || "POS-01").trim(),
+                TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum", "NoTrx", "ParkedInvoiceNumber", "Parked Invoice Number"]) || "").trim(),
                 SKU: String(getFieldCI(raw, ["SKU", "ItemCode", "PLU", "Article"]) || "").trim(),
                 Description: String(getFieldCI(raw, ["Description", "ItemName", "Deskripsi", "NamaBarang", "Item"]) || "-").trim(),
-                Qty: qty,
-                Price: price,
-                Amount: amount,
-                Disc: rawDisc,
-                NetAmount: netAmount,
-                hasNominal: true,
+                Qty: parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY", "Quantity"]) || 1) || 1,
+                Price: parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE", "UnitPrice", "Harga"])),
+                Amount: parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT", "GrossAmount", "TotalAmount", "ParkedInvoice", "Parked Invoice"])),
+                Disc: parseCurrencyNumber(getFieldCI(raw, ["TotalDisc", "Total Disc", "DiscManual", "Disc Manual", "DiscAuto", "Disc Auto", "DiscAmount", "Disc", "Discount", "Potongan"])),
+                NetAmount: parseCurrencyNumber(getFieldCI(raw, ["NetAmount", "Payment", "Net", "TotalNet"])),
                 CashNum: String(getFieldCI(raw, ["CashNum", "Cash Num", "CashierID", "Cashier", "KasirID"]) || "").trim(),
-                AuthID: String(getFieldCI(raw, ["AuthID", "AuthId", "Auth ID", "SPV_ID", "SupervisorID"]) || "").trim(),
+                AuthID: String(getFieldCI(raw, ["AuthID", "Auth ID", "SPV_ID", "SupervisorID", "ApproverID"]) || "").trim(),
                 Remarks_Kasir: String(getFieldCI(raw, ["Remarks_Kasir", "RemarksKasir", "Remarks"]) || "").trim(),
                 Waktu_Remarks_Kasir: String(getFieldCI(raw, ["Waktu_Remarks_Kasir", "WaktuRemarksKasir"]) || "").trim(),
                 Status_Verifikasi_SPV: String(getFieldCI(raw, ["Status_Verifikasi_SPV", "StatusVerifikasiSPV", "Status"]) || "PENDING").trim() || "PENDING",
@@ -1548,6 +1170,10 @@
                 Paraf_TTD_Digital_SPV: String(getFieldCI(raw, ["Paraf_TTD_Digital_SPV", "ParafSPV"]) || "").trim(),
                 Waktu_Verifikasi_SPV: String(getFieldCI(raw, ["Waktu_Verifikasi_SPV", "WaktuVerifikasiSPV"]) || "").trim()
             };
+
+            if (!base.Amount && base.Price) base.Amount = base.Price * base.Qty;
+            if (!base.Price && base.Amount) base.Price = base.Amount;
+            if (!base.NetAmount && base.Amount) base.NetAmount = Math.max(0, base.Amount - base.Disc);
 
             return resolveTransactionRowFields(sheetName, base);
         }
@@ -1574,27 +1200,19 @@
 
                     const payload = res.data;
                     if (Array.isArray(payload.users) && payload.users.length > 0) {
-                        db.users = payload.users
-                            .map(u => {
-                                const rawRole = String(getFieldCI(u, ["Role", "Jabatan"]) || "KASIR / SA").trim();
-                                return {
-                                    User_ID: String(getFieldCI(u, ["User_ID (CashNum / AuthID)", "User_ID", "UserID", "CashNum", "AuthID", "ID"]) || "").trim(),
-                                    Nama_Lengkap: String(getFieldCI(u, ["Nama_Lengkap", "Nama", "Name"]) || "").trim(),
-                                    Role: normalizeRoleName(rawRole),
-                                    Jabatan_Asli: rawRole,
-                                    PIN_Password: String(getFieldCI(u, ["PIN_Password", "PIN", "Password"]) ?? "123456").trim(),
-                                    Status_Aktif: String(getFieldCI(u, ["Status_Aktif", "Status"]) || "AKTIF").trim()
-                                };
-                            })
-                            .filter(u => u.User_ID && u.User_ID.toLowerCase() !== "user_id");
+                        db.users = payload.users.map(u => ({
+                            User_ID: String(getFieldCI(u, ["User_ID", "UserID", "ID"]) || "").trim(),
+                            Nama_Lengkap: String(getFieldCI(u, ["Nama_Lengkap", "Nama", "Name"]) || "").trim(),
+                            Role: String(getFieldCI(u, ["Role"]) || "KASIR / SA").trim(),
+                            PIN_Password: String(getFieldCI(u, ["PIN_Password", "PIN", "Password"]) || "123456").trim(),
+                            Status_Aktif: String(getFieldCI(u, ["Status_Aktif", "Status"]) || "AKTIF").trim()
+                        }));
                     }
 
                     const incomingSheets = payload.sheets || payload;
                     TRANSACTION_SHEETS.forEach(sName => {
                         if (Array.isArray(incomingSheets[sName])) {
-                            db.sheets[sName] = incomingSheets[sName]
-                                .map((r, i) => normalizeServerRow(sName, r, i))
-                                .filter(r => !isSummaryOrMetaRow(r, r.TRXNUM, r.CashNum));
+                            db.sheets[sName] = incomingSheets[sName].map((r, i) => normalizeServerRow(sName, r, i));
                         }
                     });
 
@@ -1624,7 +1242,7 @@
         }
 
         function updateAdminOnlyVisibility() {
-            const isAdmin = Boolean(currentUser && currentUser.Role === "ADMIN");
+            const isAdmin = Boolean(currentUser && (currentUser.Role === "ADMIN" || currentUser.role === "ADMIN"));
             ["btn-header-settings", "btn-footer-settings", "btn-banner-sim"].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
@@ -1638,24 +1256,23 @@
             const uidInput = document.getElementById("login-userid").value.trim();
             const pinInput = document.getElementById("login-pin").value.trim();
 
-            if (!isSimulationMode()) {
+            if (!isSimulationMode() && (!db.users || db.users.length <= 5)) {
                 await refreshAllData(false);
             }
 
             const matched = (db.users || []).find(u =>
                 normalizeId(u.User_ID) === normalizeId(uidInput) &&
-                String(u.PIN_Password ?? "").trim() === pinInput
+                String(u.PIN_Password).trim() === pinInput
             );
 
             if (!matched) {
                 showToast("User ID atau PIN tidak sesuai.", "error");
                 return;
             }
-            if (String(matched.Status_Aktif || "").trim().toUpperCase() !== "AKTIF") {
+            if (String(matched.Status_Aktif).toUpperCase() !== "AKTIF") {
                 showToast("Akun berstatus NONAKTIF. Hubungi Admin.", "error");
                 return;
             }
-            matched.Role = normalizeRoleName(matched.Role);
 
             currentUser = { ...matched, role: matched.Role };
             localStorage.setItem(KEY_SESSION, JSON.stringify(currentUser));
@@ -1713,21 +1330,14 @@
         // 6. TABS, HAK AKSES BARIS & RENDER
         // =====================================================
         function getGroupKey(sheetName, r) {
-            const normSheet = String(sheetName || "").trim().toLowerCase();
             const trx = String(r.TRXNUM || "").trim().toUpperCase();
             const dt = String(r.TrxDate || "").trim();
-            const tm = String(r.TrxTime || "").trim();
             const cash = normalizeId(r.CashNum || "");
             const reg = normalizeId(r.RegNum || "");
-
-            // Khusus menu Void-Bill Cancelation: gabungkan berdasarkan tanggal, jam (TrxTime), POS, dan kasir yang sama
-            if (normSheet === "void-bill cancelation") {
-                return `${sheetName}|VOID_TIME|${dt}|${tm}|${reg}|${cash}`;
-            }
-
             if (trx && trx !== "0" && trx !== "-") {
                 return `${sheetName}|TRX|${dt}|${reg}|${trx}|${cash}`;
             }
+            const tm = String(r.TrxTime || "").trim();
             return `${sheetName}|NO_TRX|${dt}|${tm}|${reg}|${cash}|${r.id}`;
         }
 
@@ -1758,8 +1368,7 @@
                         totalPrice: 0,
                         totalAmount: 0,
                         totalDisc: 0,
-                        totalNetAmount: 0,
-                        hasNominal: r.hasNominal !== false
+                        totalNetAmount: 0
                     });
                 }
                 const grp = map.get(gKey);
@@ -1832,7 +1441,7 @@
                 const active = activeTab === tab;
                 const count = tab === MASTER_USER_TAB ? db.users.length : getVisibleRowsForSheet(tab).length;
                 return `
-                    <button type="button" onclick="switchTab('${tab.replace(/'/g, "\'")}')"
+                    <button type="button" onclick="switchTab('${tab.replace(/'/g, "\\'")}')"
                         class="px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
                             active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
                         }">
@@ -1889,7 +1498,7 @@
 
             if (role === "ADMIN") {
                 parts.push(`
-                    <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\'")}', '${grp.primaryId}')"
+                    <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
                         class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                         ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
                     </button>
@@ -1897,7 +1506,7 @@
             } else if (role === "KASIR / SA" && isCashOwner) {
                 if (!isVerified) {
                     parts.push(`
-                        <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\'")}', '${grp.primaryId}')"
+                        <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
                             class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                             ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
                         </button>
@@ -1921,7 +1530,7 @@
                     `);
                 } else {
                     parts.push(`
-                        <button type="button" onclick="openVerifyModal('${activeTab.replace(/'/g, "\'")}', '${grp.primaryId}')"
+                        <button type="button" onclick="openVerifyModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
                             class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition">
                             ${isVerified ? "Ubah Verifikasi & Paraf" : "Verifikasi & Paraf"}
                         </button>
@@ -1969,9 +1578,6 @@
         }
 
         function renderNominalBreakdownHtml(grp) {
-            if (grp.hasNominal === false) {
-                return `<span class="text-[11px] italic text-slate-400">Non-nominal</span>`;
-            }
             return `
                 <div class="space-y-0.5 text-[11px]">
                     <div class="text-slate-500">Price: <span class="font-semibold text-slate-700">${formatRupiah(grp.totalPrice)}</span></div>
@@ -2387,93 +1993,25 @@
         }
 
         // =====================================================
-        // 9. UPLOAD EXCEL HARIAN (ANTI DUPLIKAT) & EXPORT .XLSX
+        // 9. UPLOAD EXCEL HARIAN (ANTI DUPLIKAT & BATCH) & EXPORT
         // =====================================================
-        function renderUploadSheetCheckboxes(defaultSelectAll = false) {
-            const container = document.getElementById("upload-sheets-checkboxes");
-            if (!container) return;
-            container.innerHTML = TRANSACTION_SHEETS.map(sName => {
-                const count = (db.sheets[sName] || []).length;
-                const checked = defaultSelectAll || (sName === activeTab);
-                return `
-                    <label class="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:border-emerald-400 cursor-pointer">
-                        <span class="flex items-center gap-2 min-w-0">
-                            <input type="checkbox" name="uploadSheetTarget" value="${sName}" ${checked ? "checked" : ""} onchange="updateUploadSelectionHint()"
-                                class="rounded text-emerald-600 focus:ring-emerald-500">
-                            <span class="font-semibold text-slate-800 truncate">${sName}</span>
-                        </span>
-                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">${count}</span>
-                    </label>
-                `;
-            }).join("");
-            updateUploadSelectionHint();
-        }
-
-        function toggleUploadSheetCheckboxes(checkedState) {
-            document.querySelectorAll('input[name="uploadSheetTarget"]').forEach(cb => {
-                cb.checked = checkedState;
-            });
-            updateUploadSelectionHint();
-        }
-
-        function selectOnlyCurrentUploadSheet() {
-            const target = TRANSACTION_SHEETS.includes(activeTab) ? activeTab : TRANSACTION_SHEETS[0];
-            document.querySelectorAll('input[name="uploadSheetTarget"]').forEach(cb => {
-                cb.checked = (cb.value === target);
-            });
-            updateUploadSelectionHint();
-        }
-
-        function getSelectedUploadSheets() {
-            return Array.from(document.querySelectorAll('input[name="uploadSheetTarget"]:checked')).map(cb => cb.value);
-        }
-
-        function updateUploadSelectionHint() {
-            const hint = document.getElementById("upload-single-sheet-hint");
-            if (!hint) return;
-            const selected = getSelectedUploadSheets();
-            if (selected.length === 1) {
-                hint.textContent = `Mode 1 Sheet (${selected[0]}): Jika file Excel hanya memiliki 1 tab/sheet (mis. Sheet1 atau export satuan), tab tersebut otomatis dibaca untuk "${selected[0]}".`;
-                hint.classList.remove("hidden");
-            } else {
-                hint.classList.add("hidden");
-            }
-        }
-
-        let stagedUploadFile = null;
-
         function openUploadModal() {
             if (currentUser?.Role !== "ADMIN") return;
-            stagedUploadFile = null;
-            renderUploadSheetCheckboxes(false);
             document.getElementById("excel-input-file").value = "";
             document.getElementById("upload-file-name").textContent = "Belum ada file dipilih";
+            const prog = document.getElementById("upload-progress-text");
+            if (prog) {
+                prog.textContent = "";
+                prog.classList.add("hidden");
+            }
             document.getElementById("upload-summary-wrap").classList.add("hidden");
-            const submitBtn = document.getElementById("btn-submit-upload");
-            if (submitBtn) submitBtn.disabled = true;
             document.getElementById("upload-modal").classList.remove("hidden");
             document.getElementById("upload-modal").classList.add("flex");
         }
 
         function closeUploadModal() {
-            stagedUploadFile = null;
             document.getElementById("upload-modal").classList.add("hidden");
             document.getElementById("upload-modal").classList.remove("flex");
-        }
-
-        function handleExcelFileSelected(event) {
-            const file = event.target.files[0];
-            const submitBtn = document.getElementById("btn-submit-upload");
-            if (!file) {
-                stagedUploadFile = null;
-                document.getElementById("upload-file-name").textContent = "Belum ada file dipilih";
-                if (submitBtn) submitBtn.disabled = true;
-                return;
-            }
-            stagedUploadFile = file;
-            document.getElementById("upload-file-name").textContent = `File siap di-upload: ${file.name}`;
-            document.getElementById("upload-summary-wrap").classList.add("hidden");
-            if (submitBtn) submitBtn.disabled = false;
         }
 
         function buildRowUniqueKey(sheetName, item) {
@@ -2510,16 +2048,11 @@
             const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
             if (!Array.isArray(matrix) || matrix.length === 0) return [];
 
-            const headerTokens = [
-                "trxdate", "trxnum", "sku", "cashnum", "authid", "amount", "price",
-                "netamount", "description", "regnum", "item", "createtime",
-                "origprice", "newprice", "payment", "totaldisc",
-                "parkedinvoicenumber", "parkedinvoice", "timeofparking", "cashiernameandid"
-            ];
+            const headerTokens = ["trxdate", "trxnum", "sku", "cashnum", "authid", "amount", "price", "netamount", "description", "regnum", "item", "discmanual", "totaldisc", "payment"];
             let headerRowIdx = 0;
             let bestScore = -1;
 
-            for (let i = 0; i < Math.min(12, matrix.length); i++) {
+            for (let i = 0; i < Math.min(10, matrix.length); i++) {
                 const rowCells = (matrix[i] || []).map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, ""));
                 const score = rowCells.filter(c => headerTokens.some(t => c === t || c.includes(t))).length;
                 if (score > bestScore) {
@@ -2534,33 +2067,15 @@
             return XLSX.utils.sheet_to_json(ws, { defval: "" });
         }
 
-        function submitExcelUpload() {
-            const file = stagedUploadFile || document.getElementById("excel-input-file")?.files?.[0];
-            if (!file) {
-                showResultPopup({
-                    success: false,
-                    title: "Upload Gagal",
-                    message: "Silakan pilih file Excel (.xlsx / .xls / .csv) terlebih dahulu sebelum klik Submit Upload."
-                });
-                return;
+        function processExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById("upload-file-name").textContent = file.name;
+            const progEl = document.getElementById("upload-progress-text");
+            if (progEl) {
+                progEl.textContent = "Membaca dan memproses file Excel...";
+                progEl.classList.remove("hidden");
             }
-
-            const selectedTargetSheets = getSelectedUploadSheets();
-            if (selectedTargetSheets.length === 0) {
-                showResultPopup({
-                    success: false,
-                    title: "Target Sheet Belum Dipilih",
-                    message: "Pilih minimal 1 target sheet tujuan sebelum klik Submit Upload."
-                });
-                return;
-            }
-
-            const submitBtn = document.getElementById("btn-submit-upload");
-            const spinner = document.getElementById("upload-submit-spinner");
-            const label = document.getElementById("upload-submit-label");
-            if (submitBtn) submitBtn.disabled = true;
-            if (spinner) spinner.classList.remove("hidden");
-            if (label) label.textContent = "Mengunggah...";
 
             const reader = new FileReader();
             reader.onload = async (ev) => {
@@ -2573,11 +2088,8 @@
                     let localRejected = 0;
                     const itemsHtml = [];
 
-                    for (const sheetName of selectedTargetSheets) {
-                        let matchedName = findMatchingSheetName(wb.SheetNames, sheetName);
-                        if (!matchedName && selectedTargetSheets.length === 1 && wb.SheetNames.length === 1) {
-                            matchedName = wb.SheetNames[0];
-                        }
+                    for (const sheetName of TRANSACTION_SHEETS) {
+                        const matchedName = findMatchingSheetName(wb.SheetNames, sheetName);
                         if (!matchedName) {
                             itemsHtml.push(`
                                 <div class="p-3 flex items-center justify-between bg-slate-50">
@@ -2597,9 +2109,7 @@
                         const sheetRowsToSend = [];
 
                         rawRows.forEach((raw, idx) => {
-                            const norm = normalizeServerRow(sheetName, raw, idx);
-                            if (isSummaryOrMetaRow(raw, norm.TRXNUM, norm.CashNum)) return;
-
+                            const norm = resolveTransactionRowFields(sheetName, normalizeServerRow(sheetName, raw, idx));
                             const rec = {
                                 ...norm,
                                 id: `${sheetName.slice(0, 2).toUpperCase()}-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`
@@ -2609,18 +2119,23 @@
 
                             const serverObj = {
                                 ...raw,
-                                TrxDate: raw.TrxDate ?? rec.TrxDate,
-                                TrxTime: raw.TrxTime ?? rec.TrxTime,
-                                RegNum: raw.RegNum ?? rec.RegNum,
-                                TRXNUM: raw.TRXNUM ?? rec.TRXNUM,
-                                SKU: raw.SKU ?? rec.SKU,
-                                Description: raw.Description ?? rec.Description,
-                                Price: raw.Price ?? rec.Price,
-                                Amount: raw.Amount ?? rec.Amount,
-                                Disc: raw.Disc ?? rec.Disc,
-                                NetAmount: raw.NetAmount ?? rec.NetAmount,
-                                CashNum: raw.CashNum ?? rec.CashNum,
-                                AuthID: raw.AuthID ?? rec.AuthID
+                                ...rec,
+                                TRXDATE: rec.TrxDate,
+                                TrxDate: rec.TrxDate,
+                                TrxTime: rec.TrxTime,
+                                REGNUM: rec.RegNum,
+                                RegNum: rec.RegNum,
+                                TRXNUM: rec.TRXNUM,
+                                TrxNum: rec.TRXNUM,
+                                SKU: rec.SKU,
+                                Description: rec.Description,
+                                PRICE: rec.Price,
+                                Price: rec.Price,
+                                Amount: rec.Amount,
+                                Disc: rec.Disc,
+                                NetAmount: rec.NetAmount,
+                                CashNum: rec.CashNum,
+                                AuthID: rec.AuthID
                             };
                             sheetRowsToSend.push(serverObj);
 
@@ -2634,7 +2149,9 @@
                             }
                         });
 
-                        sheetsPayload[sheetName] = sheetRowsToSend;
+                        if (sheetRowsToSend.length > 0) {
+                            sheetsPayload[sheetName] = sheetRowsToSend;
+                        }
                         localAdded += added;
                         localRejected += rejected;
 
@@ -2656,75 +2173,77 @@
                     }
                     updateLatestDataDateBadge();
 
-                    let finalDetailsHtml = itemsHtml.join("");
+                    const gasUrl = getGasUrl();
                     let finalAdded = localAdded;
                     let finalRejected = localRejected;
-                    let uploadSuccess = true;
-                    let popupMessage = `File <strong>${file.name}</strong> selesai diproses ke Google Sheets.`;
+                    let serverSummaryMap = {};
+                    let serverFailed = false;
 
-                    const gasUrl = getGasUrl();
                     if (!isSimulationMode() && gasUrl) {
-                        const res = await callGasApi({
-                            action: "uploadDailyExcel",
-                            sheets: sheetsPayload
-                        });
-                        if (!res.ok) {
-                            uploadSuccess = false;
-                            popupMessage = `Upload file <strong>${file.name}</strong> gagal dikirim ke Google Sheets (${res.error || "Terjadi kesalahan koneksi"}).`;
-                        } else if (res.data && res.data.perSheet) {
-                            finalAdded = 0;
-                            finalRejected = 0;
-                            const serverItemsHtml = Object.entries(res.data.perSheet).map(([sName, info]) => {
-                                finalAdded += Number(info.added || 0);
-                                finalRejected += Number(info.rejectedDuplicate || 0);
-                                return `
-                                    <div class="p-3 flex flex-wrap items-center justify-between gap-2">
-                                        <span class="font-bold text-slate-800">${sName}</span>
-                                        <div class="flex items-center gap-2">
-                                            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Added: ${info.added}</span>
-                                            <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">Rejected Duplicate: ${info.rejectedDuplicate}</span>
-                                        </div>
+                        finalAdded = 0;
+                        finalRejected = 0;
+                        const BATCH_SIZE = 150;
+
+                        for (const [sName, rowsList] of Object.entries(sheetsPayload)) {
+                            serverSummaryMap[sName] = { added: 0, rejectedDuplicate: 0 };
+                            for (let start = 0; start < rowsList.length; start += BATCH_SIZE) {
+                                const end = Math.min(start + BATCH_SIZE, rowsList.length);
+                                if (progEl) {
+                                    progEl.textContent = `Mengirim ${sName} (${end}/${rowsList.length} baris)...`;
+                                }
+                                const chunk = rowsList.slice(start, end);
+                                const res = await callGasApi({
+                                    action: "uploadDailyExcel",
+                                    sheets: { [sName]: chunk }
+                                });
+                                if (!res.ok) {
+                                    serverFailed = true;
+                                    break;
+                                }
+                                if (res.data && res.data.perSheet && res.data.perSheet[sName]) {
+                                    const a = Number(res.data.perSheet[sName].added || 0);
+                                    const rj = Number(res.data.perSheet[sName].rejectedDuplicate || 0);
+                                    serverSummaryMap[sName].added += a;
+                                    serverSummaryMap[sName].rejectedDuplicate += rj;
+                                    finalAdded += a;
+                                    finalRejected += rj;
+                                }
+                            }
+                            if (serverFailed) break;
+                        }
+
+                        if (!serverFailed && Object.keys(serverSummaryMap).length > 0) {
+                            const serverItemsHtml = Object.entries(serverSummaryMap).map(([sName, info]) => `
+                                <div class="p-3 flex flex-wrap items-center justify-between gap-2">
+                                    <span class="font-bold text-slate-800">${sName}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Added: ${info.added}</span>
+                                        <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">Rejected Duplicate: ${info.rejectedDuplicate}</span>
                                     </div>
-                                `;
-                            });
-                            finalDetailsHtml = serverItemsHtml.join("");
+                                </div>
+                            `);
+                            document.getElementById("upload-per-sheet-list").innerHTML = serverItemsHtml.join("");
                             await refreshAllData(false);
                         } else {
-                            renderTabs();
-                            renderSheetView();
+                            finalAdded = localAdded;
+                            finalRejected = localRejected;
+                            document.getElementById("upload-per-sheet-list").innerHTML = itemsHtml.join("");
                         }
                     } else {
-                        renderTabs();
-                        renderSheetView();
-                        popupMessage = `File <strong>${file.name}</strong> selesai diproses (Mode Simulasi Lokal).`;
+                        document.getElementById("upload-per-sheet-list").innerHTML = itemsHtml.join("");
                     }
 
-                    document.getElementById("upload-per-sheet-list").innerHTML = finalDetailsHtml;
+                    if (progEl) progEl.classList.add("hidden");
                     document.getElementById("upload-totals-banner").innerHTML = `
                         <span>Total Masuk: +${finalAdded} baris</span>
                         <span>Total Duplikat Ditolak: ${finalRejected} baris</span>
                     `;
                     document.getElementById("upload-summary-wrap").classList.remove("hidden");
-
-                    showResultPopup({
-                        success: uploadSuccess,
-                        title: uploadSuccess ? "Upload Excel Berhasil" : "Upload Excel Gagal",
-                        message: uploadSuccess
-                            ? `${popupMessage}<br><span class="text-emerald-700 font-bold">Total Masuk: +${finalAdded} baris</span> • <span class="text-rose-600 font-bold">Duplikat Ditolak: ${finalRejected} baris</span>`
-                            : popupMessage,
-                        detailsHtml: finalDetailsHtml
-                    });
+                    showToast(`Upload selesai: +${finalAdded} masuk, ${finalRejected} duplikat ditolak.`, serverFailed ? "info" : "success");
                 } catch (err) {
                     console.error(err);
-                    showResultPopup({
-                        success: false,
-                        title: "Upload Excel Gagal",
-                        message: `File Excel gagal dibaca atau format tidak sesuai: ${err.message || "Error tidak diketahui"}.`
-                    });
-                } finally {
-                    if (spinner) spinner.classList.add("hidden");
-                    if (label) label.textContent = "Submit Upload";
-                    if (submitBtn) submitBtn.disabled = false;
+                    if (progEl) progEl.classList.add("hidden");
+                    showToast("Gagal memproses file Excel.", "error");
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -2819,206 +2338,6 @@
                 : new Date().toISOString().slice(0, 10);
             XLSX.writeFile(wb, `Audit_Kasir_MDS_312_${suffix}.xlsx`);
             showToast("File .xlsx berhasil diekspor.", "success");
-        }
-
-        // =====================================================
-        // 9B. HAPUS DATA PER SHEET & RENTANG TANGGAL (ADMIN)
-        // =====================================================
-        function openDeleteRangeModal() {
-            if (currentUser?.Role !== "ADMIN") return;
-            const container = document.getElementById("delete-sheets-checkboxes");
-            if (container) {
-                container.innerHTML = TRANSACTION_SHEETS.map(sName => {
-                    const count = (db.sheets[sName] || []).length;
-                    const isCurrent = sName === activeTab;
-                    return `
-                        <label class="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:border-rose-300 cursor-pointer">
-                            <span class="flex items-center gap-2 min-w-0">
-                                <input type="checkbox" name="deleteSheetTarget" value="${sName}" ${isCurrent ? "checked" : ""} onchange="updateDeletePreviewCount()"
-                                    class="rounded text-rose-600 focus:ring-rose-500">
-                                <span class="font-semibold text-slate-800 truncate">${sName}</span>
-                            </span>
-                            <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">${count}</span>
-                        </label>
-                    `;
-                }).join("");
-            }
-
-            const latestIso = parseToIsoDate(getLatestDatabaseDate());
-            const startEl = document.getElementById("delete-start-date");
-            const endEl = document.getElementById("delete-end-date");
-            if (startEl && !startEl.value && latestIso) startEl.value = latestIso;
-            if (endEl && !endEl.value && latestIso) endEl.value = latestIso;
-
-            updateDeletePreviewCount();
-            const modal = document.getElementById("delete-range-modal");
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-        }
-
-        function closeDeleteRangeModal() {
-            const modal = document.getElementById("delete-range-modal");
-            if (modal) {
-                modal.classList.add("hidden");
-                modal.classList.remove("flex");
-            }
-        }
-
-        function toggleDeleteSheetCheckboxes(checkedState) {
-            document.querySelectorAll('input[name="deleteSheetTarget"]').forEach(cb => {
-                cb.checked = checkedState;
-            });
-            updateDeletePreviewCount();
-        }
-
-        function getSelectedDeleteSheets() {
-            return Array.from(document.querySelectorAll('input[name="deleteSheetTarget"]:checked')).map(cb => cb.value);
-        }
-
-        function countRowsInDateRange(sheetName, startIso, endIso) {
-            const rows = db.sheets[sheetName] || [];
-            return rows.filter(r => {
-                const iso = parseToIsoDate(r.TrxDate);
-                if (!iso) return false;
-                return iso >= startIso && iso <= endIso;
-            }).length;
-        }
-
-        function updateDeletePreviewCount() {
-            const box = document.getElementById("delete-preview-box");
-            if (!box) return;
-            const selected = getSelectedDeleteSheets();
-            const startIso = document.getElementById("delete-start-date")?.value || "";
-            const endIso = document.getElementById("delete-end-date")?.value || "";
-
-            if (selected.length === 0 || !startIso || !endIso) {
-                box.innerHTML = "Pilih minimal 1 sheet serta tanggal awal dan akhir untuk melihat jumlah data yang akan dihapus.";
-                return;
-            }
-            if (startIso > endIso) {
-                box.innerHTML = `<span class="text-rose-600">Tanggal mulai tidak boleh lebih besar dari tanggal akhir.</span>`;
-                return;
-            }
-
-            let totalMatch = 0;
-            const details = selected.map(sName => {
-                const cnt = countRowsInDateRange(sName, startIso, endIso);
-                totalMatch += cnt;
-                return `${sName}: <strong>${cnt}</strong>`;
-            });
-
-            box.innerHTML = `
-                <div class="text-rose-800">Total baris ditemukan pada rentang <strong>${startIso}</strong> s/d <strong>${endIso}</strong>: <strong>${totalMatch} baris</strong></div>
-                <div class="text-[11px] font-normal text-slate-600 mt-1">${details.join(" • ")}</div>
-            `;
-        }
-
-        function submitDeleteByDateRange(e) {
-            e.preventDefault();
-            if (currentUser?.Role !== "ADMIN") return;
-
-            const selectedSheets = getSelectedDeleteSheets();
-            const startIso = document.getElementById("delete-start-date")?.value || "";
-            const endIso = document.getElementById("delete-end-date")?.value || "";
-
-            if (selectedSheets.length === 0) {
-                showToast("Pilih minimal 1 sheet yang ingin dihapus.", "error");
-                return;
-            }
-            if (!startIso || !endIso) {
-                showToast("Rentang tanggal wajib diisi.", "error");
-                return;
-            }
-            if (startIso > endIso) {
-                showToast("Tanggal mulai tidak boleh lebih besar dari tanggal akhir.", "error");
-                return;
-            }
-
-            let totalToDelete = 0;
-            selectedSheets.forEach(sName => {
-                totalToDelete += countRowsInDateRange(sName, startIso, endIso);
-            });
-
-            if (totalToDelete === 0) {
-                showToast("Tidak ada baris transaksi pada sheet dan tanggal tersebut.", "info");
-                return;
-            }
-
-            askConfirm(
-                "Konfirmasi Hapus Data",
-                `Yakin ingin menghapus ${totalToDelete} baris transaksi pada ${selectedSheets.length} sheet terpilih (${selectedSheets.join(", ")}) untuk tanggal ${startIso} s/d ${endIso}?`,
-                async () => {
-                    const delBtn = document.getElementById("btn-submit-delete-range");
-                    const delSpinner = document.getElementById("delete-submit-spinner");
-                    const delLabel = document.getElementById("delete-submit-label");
-                    if (delBtn) delBtn.disabled = true;
-                    if (delSpinner) delSpinner.classList.remove("hidden");
-                    if (delLabel) delLabel.textContent = "Menghapus...";
-
-                    try {
-                        if (!isSimulationMode() && getGasUrl()) {
-                            const res = await callGasApi({
-                                action: "deleteByDateRange",
-                                sheets: selectedSheets,
-                                startDate: startIso,
-                                endDate: endIso,
-                                actorId: currentUser.User_ID
-                            });
-                            if (!res.ok) {
-                                showResultPopup({
-                                    success: false,
-                                    title: "Hapus Data Gagal",
-                                    message: `Gagal menghapus data di Google Sheets (${res.error || "Error server"}). Pastikan Code.gs sudah mendukung action <code>deleteByDateRange</code>.`
-                                });
-                                return;
-                            }
-                        }
-
-                        let removedCount = 0;
-                        const detailRows = [];
-                        selectedSheets.forEach(sName => {
-                            const before = (db.sheets[sName] || []).length;
-                            db.sheets[sName] = (db.sheets[sName] || []).filter(r => {
-                                const iso = parseToIsoDate(r.TrxDate);
-                                if (!iso) return true;
-                                return !(iso >= startIso && iso <= endIso);
-                            });
-                            const diff = before - db.sheets[sName].length;
-                            removedCount += diff;
-                            detailRows.push(`
-                                <div class="p-3 flex items-center justify-between">
-                                    <span class="font-bold text-slate-800">${sName}</span>
-                                    <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">Terhapus: ${diff} baris</span>
-                                </div>
-                            `);
-                        });
-
-                        saveDb();
-                        closeDeleteRangeModal();
-                        renderTabs();
-                        renderSheetView();
-                        updateLatestDataDateBadge();
-
-                        showResultPopup({
-                            success: true,
-                            title: "Hapus Data Berhasil",
-                            message: `Sebanyak <strong>${removedCount} baris data</strong> pada rentang tanggal <strong>${startIso}</strong> s/d <strong>${endIso}</strong> telah berhasil dihapus.`,
-                            detailsHtml: detailRows.join("")
-                        });
-                    } catch (err) {
-                        console.error(err);
-                        showResultPopup({
-                            success: false,
-                            title: "Hapus Data Gagal",
-                            message: `Terjadi kesalahan saat menghapus data: ${err.message || "Error tidak diketahui"}.`
-                        });
-                    } finally {
-                        if (delSpinner) delSpinner.classList.add("hidden");
-                        if (delLabel) delLabel.textContent = "Submit Hapus Data";
-                        if (delBtn) delBtn.disabled = false;
-                    }
-                }
-            );
         }
 
         // =====================================================
@@ -3206,7 +2525,7 @@
         // 11. PENGATURAN (KHUSUS ADMIN) & INISIALISASI
         // =====================================================
         function openSettingsModal() {
-            if (!currentUser || currentUser.Role !== "ADMIN") return;
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             document.getElementById("gas-url-input").value = getGasUrl();
             document.getElementById("sim-mode-toggle").checked = isSimulationMode();
             document.getElementById("config-modal").classList.remove("hidden");
@@ -3222,7 +2541,7 @@
         }
 
         function resetDefaultUrl() {
-            if (!currentUser || currentUser.Role !== "ADMIN") return;
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             document.getElementById("gas-url-input").value = DEFAULT_GAS_URL;
             document.getElementById("sim-mode-toggle").checked = false;
             showToast("URL Web App bawaan diisi. Klik Simpan Pengaturan.", "info");
@@ -3230,7 +2549,7 @@
 
         async function saveSettings(e) {
             e.preventDefault();
-            if (!currentUser || currentUser.Role !== "ADMIN") return;
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             const url = document.getElementById("gas-url-input").value.trim();
             const manualSim = document.getElementById("sim-mode-toggle").checked;
 
@@ -3248,24 +2567,22 @@
             if (!isSimulationMode()) {
                 await refreshAllData(true);
             } else {
-                updateLastSyncBadge("Lokal");
                 showToast("Mode Simulasi Lokal aktif.", "info");
             }
         }
 
         function resetLocalSimulationData() {
-            if (!currentUser || currentUser.Role !== "ADMIN") return;
+            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
             askConfirm(
                 "Reset Data Simulasi Lokal",
                 "Data transaksi dan user di penyimpanan lokal browser akan dikembalikan ke data contoh awal Store 312. Lanjutkan?",
                 () => {
-                    if (!currentUser || currentUser.Role !== "ADMIN") return;
+                    if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
                     db = createDefaultDb();
                     saveDb(db);
                     closeSettingsModal();
                     renderTabs();
                     renderSheetView();
-                    updateLatestDataDateBadge();
                     showToast("Data simulasi lokal direset ke awal.", "info");
                 }
             );
