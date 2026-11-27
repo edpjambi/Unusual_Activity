@@ -225,6 +225,7 @@ function normalizeDateIso(val) {
 
     const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
     if (isoMatch) {
+        if (Number(isoMatch[1]) <= 1900) return "";
         return formatDateParts(isoMatch[1], isoMatch[2], isoMatch[3]);
     }
 
@@ -1245,14 +1246,33 @@ async function submitVerification() {
     });
 }
 
+function toggleAllDeleteSheets(checked) {
+    document.querySelectorAll(".del-sheet-cb").forEach(cb => {
+        cb.checked = Boolean(checked);
+    });
+}
+
 function openDeleteRangeModal() {
     const box = document.getElementById("delete-sheet-checkboxes");
     box.innerHTML = TRANSACTION_SHEETS.map(s => `
-        <label class="flex items-center gap-1.5">
+        <label class="flex items-center gap-1.5 cursor-pointer">
             <input type="checkbox" class="del-sheet-cb" value="${s}" checked />
             <span class="truncate">${s}</span>
         </label>
     `).join("");
+    const prog = document.getElementById("delete-progress-text");
+    if (prog) {
+        prog.textContent = "";
+        prog.classList.add("hidden");
+    }
+    const inputArea = document.getElementById("delete-input-area");
+    const resultArea = document.getElementById("delete-result-area");
+    if (inputArea) inputArea.classList.remove("hidden");
+    if (resultArea) resultArea.classList.add("hidden");
+    const submitBtn = document.getElementById("btn-submit-delete");
+    const cancelBtn = document.getElementById("btn-cancel-delete");
+    if (submitBtn) submitBtn.disabled = false;
+    if (cancelBtn) cancelBtn.disabled = false;
     openModal("delete-range-modal");
 }
 
@@ -1265,29 +1285,99 @@ async function submitDeleteByDateRange() {
         alert("Pilih rentang tanggal dan minimal satu sheet.");
         return;
     }
-
-    sheets.forEach(sName => {
-        db.sheets[sName] = (db.sheets[sName] || []).filter(r => {
-            const d = normalizeDateIso(r.TrxDate);
-            return !(d && d >= startDate && d <= endDate);
-        });
-    });
-
-    saveDb();
-    updateLatestDataDateBadge();
-    renderTabs();
-    renderSheetView();
-    closeModal("delete-range-modal");
-
-    const res = await callGasApi({
-        action: "deleteByDateRange",
-        sheets,
-        startDate,
-        endDate
-    });
-    if (res.ok) {
-        await refreshAllData(false);
+    if (startDate > endDate) {
+        alert("Tanggal Mulai tidak boleh lebih besar dari Tanggal Akhir.");
+        return;
     }
+
+    const prog = document.getElementById("delete-progress-text");
+    const submitBtn = document.getElementById("btn-submit-delete");
+    const cancelBtn = document.getElementById("btn-cancel-delete");
+    if (submitBtn) submitBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    let totalDeleted = 0;
+    const perSheet = {};
+    let deleteOk = true;
+    let errorDetail = "";
+
+    const gasUrl = getGasUrl();
+    if (!isSimulationMode() && gasUrl) {
+        for (let i = 0; i < sheets.length; i++) {
+            const sName = sheets[i];
+            if (prog) {
+                prog.textContent = `Menghapus data pada ${sName} (${i + 1}/${sheets.length})...`;
+                prog.classList.remove("hidden");
+            }
+            const res = await callGasApi({
+                action: "deleteByDateRange",
+                sheets: [sName],
+                startDate,
+                endDate
+            });
+            if (!res.ok) {
+                deleteOk = false;
+                errorDetail = `Gagal pada sheet ${sName}: ${res.error || "Terjadi kesalahan koneksi"}`;
+                break;
+            }
+            const deletedCount = Number((res.data && res.data.perSheet && res.data.perSheet[sName]) || (res.data && res.data.totalDeleted) || 0);
+            perSheet[sName] = deletedCount;
+            totalDeleted += deletedCount;
+        }
+
+        if (prog) {
+            prog.textContent = "Menyegarkan data terbaru dari Google Sheets...";
+        }
+        await refreshAllData(false);
+    } else {
+        sheets.forEach(sName => {
+            const before = (db.sheets[sName] || []).length;
+            db.sheets[sName] = (db.sheets[sName] || []).filter(r => {
+                const d = normalizeDateIso(r.TrxDate);
+                return !(d && d >= startDate && d <= endDate);
+            });
+            const deletedCount = before - db.sheets[sName].length;
+            perSheet[sName] = deletedCount;
+            totalDeleted += deletedCount;
+        });
+        saveDb();
+        updateLatestDataDateBadge();
+        renderTabs();
+        renderSheetView();
+    }
+
+    if (submitBtn) submitBtn.disabled = false;
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (prog) prog.classList.add("hidden");
+
+    const summaryMsg = document.getElementById("delete-summary-msg");
+    const totalsBanner = document.getElementById("delete-totals-banner");
+    const listEl = document.getElementById("delete-per-sheet-list");
+
+    if (summaryMsg) {
+        summaryMsg.innerHTML = deleteOk
+            ? `Penghapusan data rentang <strong>${startDate}</strong> s/d <strong>${endDate}</strong> selesai diproses.`
+            : `<span class="text-rose-700">Proses penghapusan terhenti. ${errorDetail}</span>`;
+    }
+    if (totalsBanner) {
+        totalsBanner.innerHTML = `
+            <span>Status: ${deleteOk ? "Berhasil" : "Gagal / Sebagian"}</span>
+            <span class="text-rose-700">Total Dihapus: ${totalDeleted} baris</span>
+        `;
+    }
+    if (listEl) {
+        listEl.innerHTML = Object.entries(perSheet).map(([sName, cnt]) => `
+            <div class="p-2.5 flex items-center justify-between">
+                <span class="font-bold text-slate-800">${sName}</span>
+                <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">Terhapus: ${cnt}</span>
+            </div>
+        `).join("") || `<div class="p-3 text-slate-500">Belum ada sheet yang diproses.</div>`;
+    }
+
+    const inputArea = document.getElementById("delete-input-area");
+    const resultArea = document.getElementById("delete-result-area");
+    if (inputArea) inputArea.classList.add("hidden");
+    if (resultArea) resultArea.classList.remove("hidden");
 }
 
 function openUserModal(idx = -1) {

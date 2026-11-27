@@ -319,21 +319,45 @@
     <!-- MODAL HAPUS DATA RENTANG TANGGAL -->
     <div id="delete-range-modal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-xl">
-            <h3 class="text-base font-extrabold text-rose-700">Hapus Data per Rentang Tanggal</h3>
-            <div class="grid grid-cols-2 gap-2.5">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Mulai</label>
-                    <input id="delete-start-date" type="date" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-extrabold text-rose-700">Hapus Data per Rentang Tanggal</h3>
+                <button onclick="closeModal('delete-range-modal')" class="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+            </div>
+            <div id="delete-input-area" class="space-y-3">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Mulai</label>
+                        <input id="delete-start-date" type="date" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Akhir</label>
+                        <input id="delete-end-date" type="date" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Akhir</label>
-                    <input id="delete-end-date" type="date" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-700">Pilih Sheet yang Dihapus:</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="toggleAllDeleteSheets(true)" class="text-[11px] font-bold text-indigo-600 hover:underline">Pilih Semua</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="toggleAllDeleteSheets(false)" class="text-[11px] font-bold text-slate-600 hover:underline">Kosongkan Semua</button>
+                        </div>
+                    </div>
+                    <div id="delete-sheet-checkboxes" class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto p-2.5 border border-slate-200 rounded-xl text-xs"></div>
+                </div>
+                <p id="delete-progress-text" class="hidden text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2"></p>
+                <div class="flex justify-end gap-2">
+                    <button id="btn-cancel-delete" onclick="closeModal('delete-range-modal')" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Batal</button>
+                    <button id="btn-submit-delete" onclick="submitDeleteByDateRange()" class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white">Hapus Data</button>
                 </div>
             </div>
-            <div id="delete-sheet-checkboxes" class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto p-2 border border-slate-200 rounded-xl text-xs"></div>
-            <div class="flex justify-end gap-2">
-                <button onclick="closeModal('delete-range-modal')" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Batal</button>
-                <button onclick="submitDeleteByDateRange()" class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white">Hapus Data</button>
+            <div id="delete-result-area" class="hidden space-y-3">
+                <p id="delete-summary-msg" class="text-xs font-semibold text-slate-700"></p>
+                <div id="delete-totals-banner" class="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-100 text-xs font-extrabold"></div>
+                <div id="delete-per-sheet-list" class="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl text-xs"></div>
+                <div class="flex justify-end">
+                    <button onclick="closeModal('delete-range-modal')" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white">Selesai</button>
+                </div>
             </div>
         </div>
     </div>
