@@ -204,6 +204,9 @@
                 <button type="button" onclick="openExportModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-sm transition">
                     Export / Download (.xlsx)
                 </button>
+                <button type="button" onclick="openDeleteRangeModal()" class="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition">
+                    Hapus Data (Rentang Tanggal)
+                </button>
             </div>
         </div>
 
@@ -415,20 +418,35 @@
                 <h3 class="font-bold text-slate-900 text-sm sm:text-base">Upload Excel Harian • Anti-Duplikat per Sheet</h3>
                 <button type="button" onclick="closeUploadModal()" class="px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800">Tutup</button>
             </div>
-            <div class="p-5 space-y-4">
-                <p class="text-xs text-slate-600 leading-relaxed">
-                    Pilih file <strong>.xlsx</strong> aktivitas kasir harian. Setiap sheet diperiksa secara terpisah menggunakan <em>composite unique key</em>: baris transaksi yang sama persis dengan data yang sudah ada akan <strong>ditolak (rejected duplicate)</strong>.
+            <div class="p-5 space-y-4 text-xs">
+                <p class="text-slate-600 leading-relaxed">
+                    Pilih tujuan sheet (bisa <strong>1 sheet tertentu</strong> untuk file satuan, beberapa sheet, atau <strong>Semua Sheet</strong>), lalu pilih file <strong>.xlsx / .xls / .csv</strong>. Baris yang sudah ada akan otomatis <strong>ditolak (rejected duplicate)</strong>.
                 </p>
 
-                <label class="block border-2 border-dashed border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 rounded-2xl p-6 text-center cursor-pointer transition">
-                    <span class="block text-xs sm:text-sm font-bold text-emerald-800">Pilih File Excel (.xlsx / .xls)</span>
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="font-bold text-slate-800">Target Sheet yang Akan Di-upload <span class="text-rose-500">*</span></label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="toggleUploadSheetCheckboxes(true)" class="text-[11px] font-bold text-emerald-700 hover:underline">Pilih Semua</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="selectOnlyCurrentUploadSheet()" class="text-[11px] font-bold text-indigo-600 hover:underline">Hanya Sheet Aktif</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="toggleUploadSheetCheckboxes(false)" class="text-[11px] font-bold text-slate-500 hover:underline">Kosongkan</button>
+                        </div>
+                    </div>
+                    <div id="upload-sheets-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 max-h-44 overflow-y-auto"></div>
+                    <p id="upload-single-sheet-hint" class="text-[11px] text-indigo-700 font-medium mt-1.5 hidden"></p>
+                </div>
+
+                <label class="block border-2 border-dashed border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 rounded-2xl p-5 text-center cursor-pointer transition">
+                    <span class="block text-xs sm:text-sm font-bold text-emerald-800">Pilih File Excel (.xlsx / .xls / .csv)</span>
                     <span id="upload-file-name" class="block text-xs text-slate-500 mt-1">Belum ada file dipilih</span>
                     <input type="file" id="excel-input-file" accept=".xlsx,.xls,.csv" onchange="processExcelUpload(event)" class="sr-only">
                 </label>
 
                 <div id="upload-summary-wrap" class="hidden space-y-2">
                     <div id="upload-totals-banner" class="p-3 rounded-xl bg-slate-900 text-white text-xs font-bold flex flex-wrap justify-between gap-2"></div>
-                    <div id="upload-per-sheet-list" class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs"></div>
+                    <div id="upload-per-sheet-list" class="max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs"></div>
                 </div>
 
                 <div class="flex justify-end">
@@ -475,6 +493,59 @@
                             Download .xlsx
                         </button>
                     </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL 3C: HAPUS DATA PER SHEET & RENTANG TANGGAL      -->
+    <!-- ===================================================== -->
+    <div id="delete-range-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full my-6 overflow-hidden">
+            <div class="px-5 py-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between">
+                <h3 class="font-bold text-rose-900 text-sm sm:text-base">Hapus Data per Sheet & Rentang Tanggal</h3>
+                <button type="button" onclick="closeDeleteRangeModal()" class="px-2 py-1 text-xs font-bold text-rose-600 hover:text-rose-900">Tutup</button>
+            </div>
+            <form onsubmit="submitDeleteByDateRange(event)" class="p-5 space-y-4 text-xs">
+                <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 leading-relaxed">
+                    <strong>Perhatian:</strong> Data pada sheet dan rentang tanggal (<code>TrxDate</code>) yang dipilih akan dihapus dari database lokal maupun Google Sheets.
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="font-bold text-slate-800">Pilih Sheet yang Akan Dihapus <span class="text-rose-500">*</span></label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="toggleDeleteSheetCheckboxes(true)" class="text-[11px] font-bold text-indigo-600 hover:underline">Pilih Semua</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="toggleDeleteSheetCheckboxes(false)" class="text-[11px] font-bold text-slate-500 hover:underline">Kosongkan</button>
+                        </div>
+                    </div>
+                    <div id="delete-sheets-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 max-h-48 overflow-y-auto"></div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Dari Tanggal <span class="text-rose-500">*</span></label>
+                        <input type="date" id="delete-start-date" required oninput="updateDeletePreviewCount()"
+                            class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Sampai Tanggal <span class="text-rose-500">*</span></label>
+                        <input type="date" id="delete-end-date" required oninput="updateDeletePreviewCount()"
+                            class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                    </div>
+                </div>
+
+                <div id="delete-preview-box" class="p-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold">
+                    Pilih sheet dan rentang tanggal untuk melihat jumlah baris yang akan dihapus.
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeDeleteRangeModal()" class="px-4 py-2 rounded-xl font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+                    <button type="submit" id="btn-submit-delete-range" class="px-4 py-2 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm">
+                        Hapus Data Terpilih
+                    </button>
                 </div>
             </form>
         </div>
@@ -2248,8 +2319,60 @@
         // =====================================================
         // 9. UPLOAD EXCEL HARIAN (ANTI DUPLIKAT) & EXPORT .XLSX
         // =====================================================
+        function renderUploadSheetCheckboxes(defaultSelectAll = false) {
+            const container = document.getElementById("upload-sheets-checkboxes");
+            if (!container) return;
+            container.innerHTML = TRANSACTION_SHEETS.map(sName => {
+                const count = (db.sheets[sName] || []).length;
+                const checked = defaultSelectAll || (sName === activeTab);
+                return `
+                    <label class="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:border-emerald-400 cursor-pointer">
+                        <span class="flex items-center gap-2 min-w-0">
+                            <input type="checkbox" name="uploadSheetTarget" value="${sName}" ${checked ? "checked" : ""} onchange="updateUploadSelectionHint()"
+                                class="rounded text-emerald-600 focus:ring-emerald-500">
+                            <span class="font-semibold text-slate-800 truncate">${sName}</span>
+                        </span>
+                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">${count}</span>
+                    </label>
+                `;
+            }).join("");
+            updateUploadSelectionHint();
+        }
+
+        function toggleUploadSheetCheckboxes(checkedState) {
+            document.querySelectorAll('input[name="uploadSheetTarget"]').forEach(cb => {
+                cb.checked = checkedState;
+            });
+            updateUploadSelectionHint();
+        }
+
+        function selectOnlyCurrentUploadSheet() {
+            const target = TRANSACTION_SHEETS.includes(activeTab) ? activeTab : TRANSACTION_SHEETS[0];
+            document.querySelectorAll('input[name="uploadSheetTarget"]').forEach(cb => {
+                cb.checked = (cb.value === target);
+            });
+            updateUploadSelectionHint();
+        }
+
+        function getSelectedUploadSheets() {
+            return Array.from(document.querySelectorAll('input[name="uploadSheetTarget"]:checked')).map(cb => cb.value);
+        }
+
+        function updateUploadSelectionHint() {
+            const hint = document.getElementById("upload-single-sheet-hint");
+            if (!hint) return;
+            const selected = getSelectedUploadSheets();
+            if (selected.length === 1) {
+                hint.textContent = `Mode 1 Sheet (${selected[0]}): Jika file Excel hanya memiliki 1 tab/sheet (mis. Sheet1 atau export satuan), tab tersebut otomatis dibaca untuk "${selected[0]}".`;
+                hint.classList.remove("hidden");
+            } else {
+                hint.classList.add("hidden");
+            }
+        }
+
         function openUploadModal() {
             if (currentUser?.Role !== "ADMIN") return;
+            renderUploadSheetCheckboxes(false);
             document.getElementById("excel-input-file").value = "";
             document.getElementById("upload-file-name").textContent = "Belum ada file dipilih";
             document.getElementById("upload-summary-wrap").classList.add("hidden");
@@ -2323,6 +2446,14 @@
         function processExcelUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+
+            const selectedTargetSheets = getSelectedUploadSheets();
+            if (selectedTargetSheets.length === 0) {
+                showToast("Pilih minimal 1 target sheet sebelum memilih file Excel.", "error");
+                event.target.value = "";
+                return;
+            }
+
             document.getElementById("upload-file-name").textContent = file.name;
 
             const reader = new FileReader();
@@ -2336,8 +2467,11 @@
                     let localRejected = 0;
                     const itemsHtml = [];
 
-                    for (const sheetName of TRANSACTION_SHEETS) {
-                        const matchedName = findMatchingSheetName(wb.SheetNames, sheetName);
+                    for (const sheetName of selectedTargetSheets) {
+                        let matchedName = findMatchingSheetName(wb.SheetNames, sheetName);
+                        if (!matchedName && selectedTargetSheets.length === 1 && wb.SheetNames.length === 1) {
+                            matchedName = wb.SheetNames[0];
+                        }
                         if (!matchedName) {
                             itemsHtml.push(`
                                 <div class="p-3 flex items-center justify-between bg-slate-50">
@@ -2548,6 +2682,168 @@
                 : new Date().toISOString().slice(0, 10);
             XLSX.writeFile(wb, `Audit_Kasir_MDS_312_${suffix}.xlsx`);
             showToast("File .xlsx berhasil diekspor.", "success");
+        }
+
+        // =====================================================
+        // 9B. HAPUS DATA PER SHEET & RENTANG TANGGAL (ADMIN)
+        // =====================================================
+        function openDeleteRangeModal() {
+            if (currentUser?.Role !== "ADMIN") return;
+            const container = document.getElementById("delete-sheets-checkboxes");
+            if (container) {
+                container.innerHTML = TRANSACTION_SHEETS.map(sName => {
+                    const count = (db.sheets[sName] || []).length;
+                    const isCurrent = sName === activeTab;
+                    return `
+                        <label class="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:border-rose-300 cursor-pointer">
+                            <span class="flex items-center gap-2 min-w-0">
+                                <input type="checkbox" name="deleteSheetTarget" value="${sName}" ${isCurrent ? "checked" : ""} onchange="updateDeletePreviewCount()"
+                                    class="rounded text-rose-600 focus:ring-rose-500">
+                                <span class="font-semibold text-slate-800 truncate">${sName}</span>
+                            </span>
+                            <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">${count}</span>
+                        </label>
+                    `;
+                }).join("");
+            }
+
+            const latestIso = parseToIsoDate(getLatestDatabaseDate());
+            const startEl = document.getElementById("delete-start-date");
+            const endEl = document.getElementById("delete-end-date");
+            if (startEl && !startEl.value && latestIso) startEl.value = latestIso;
+            if (endEl && !endEl.value && latestIso) endEl.value = latestIso;
+
+            updateDeletePreviewCount();
+            const modal = document.getElementById("delete-range-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+
+        function closeDeleteRangeModal() {
+            const modal = document.getElementById("delete-range-modal");
+            if (modal) {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+            }
+        }
+
+        function toggleDeleteSheetCheckboxes(checkedState) {
+            document.querySelectorAll('input[name="deleteSheetTarget"]').forEach(cb => {
+                cb.checked = checkedState;
+            });
+            updateDeletePreviewCount();
+        }
+
+        function getSelectedDeleteSheets() {
+            return Array.from(document.querySelectorAll('input[name="deleteSheetTarget"]:checked')).map(cb => cb.value);
+        }
+
+        function countRowsInDateRange(sheetName, startIso, endIso) {
+            const rows = db.sheets[sheetName] || [];
+            return rows.filter(r => {
+                const iso = parseToIsoDate(r.TrxDate);
+                if (!iso) return false;
+                return iso >= startIso && iso <= endIso;
+            }).length;
+        }
+
+        function updateDeletePreviewCount() {
+            const box = document.getElementById("delete-preview-box");
+            if (!box) return;
+            const selected = getSelectedDeleteSheets();
+            const startIso = document.getElementById("delete-start-date")?.value || "";
+            const endIso = document.getElementById("delete-end-date")?.value || "";
+
+            if (selected.length === 0 || !startIso || !endIso) {
+                box.innerHTML = "Pilih minimal 1 sheet serta tanggal awal dan akhir untuk melihat jumlah data yang akan dihapus.";
+                return;
+            }
+            if (startIso > endIso) {
+                box.innerHTML = `<span class="text-rose-600">Tanggal mulai tidak boleh lebih besar dari tanggal akhir.</span>`;
+                return;
+            }
+
+            let totalMatch = 0;
+            const details = selected.map(sName => {
+                const cnt = countRowsInDateRange(sName, startIso, endIso);
+                totalMatch += cnt;
+                return `${sName}: <strong>${cnt}</strong>`;
+            });
+
+            box.innerHTML = `
+                <div class="text-rose-800">Total baris ditemukan pada rentang <strong>${startIso}</strong> s/d <strong>${endIso}</strong>: <strong>${totalMatch} baris</strong></div>
+                <div class="text-[11px] font-normal text-slate-600 mt-1">${details.join(" • ")}</div>
+            `;
+        }
+
+        function submitDeleteByDateRange(e) {
+            e.preventDefault();
+            if (currentUser?.Role !== "ADMIN") return;
+
+            const selectedSheets = getSelectedDeleteSheets();
+            const startIso = document.getElementById("delete-start-date")?.value || "";
+            const endIso = document.getElementById("delete-end-date")?.value || "";
+
+            if (selectedSheets.length === 0) {
+                showToast("Pilih minimal 1 sheet yang ingin dihapus.", "error");
+                return;
+            }
+            if (!startIso || !endIso) {
+                showToast("Rentang tanggal wajib diisi.", "error");
+                return;
+            }
+            if (startIso > endIso) {
+                showToast("Tanggal mulai tidak boleh lebih besar dari tanggal akhir.", "error");
+                return;
+            }
+
+            let totalToDelete = 0;
+            selectedSheets.forEach(sName => {
+                totalToDelete += countRowsInDateRange(sName, startIso, endIso);
+            });
+
+            if (totalToDelete === 0) {
+                showToast("Tidak ada baris transaksi pada sheet dan tanggal tersebut.", "info");
+                return;
+            }
+
+            askConfirm(
+                "Konfirmasi Hapus Data",
+                `Yakin ingin menghapus ${totalToDelete} baris transaksi pada ${selectedSheets.length} sheet terpilih (${selectedSheets.join(", ")}) untuk tanggal ${startIso} s/d ${endIso}?`,
+                async () => {
+                    if (!isSimulationMode() && getGasUrl()) {
+                        const res = await callGasApi({
+                            action: "deleteByDateRange",
+                            sheets: selectedSheets,
+                            startDate: startIso,
+                            endDate: endIso,
+                            actorId: currentUser.User_ID
+                        });
+                        if (!res.ok) {
+                            showToast("Gagal menghapus data di Google Sheets. Pastikan Code.gs sudah mendukung action deleteByDateRange.", "error");
+                            return;
+                        }
+                    }
+
+                    let removedCount = 0;
+                    selectedSheets.forEach(sName => {
+                        const before = (db.sheets[sName] || []).length;
+                        db.sheets[sName] = (db.sheets[sName] || []).filter(r => {
+                            const iso = parseToIsoDate(r.TrxDate);
+                            if (!iso) return true;
+                            return !(iso >= startIso && iso <= endIso);
+                        });
+                        removedCount += (before - db.sheets[sName].length);
+                    });
+
+                    saveDb();
+                    closeDeleteRangeModal();
+                    renderTabs();
+                    renderSheetView();
+                    updateLatestDataDateBadge();
+                    showToast(`Berhasil menghapus ${removedCount} baris data.`, "success");
+                }
+            );
         }
 
         // =====================================================
