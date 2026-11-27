@@ -1,6 +1,6 @@
 // Konfigurasi ID Admin Penuh (default: 64593) & 1 ID Admin Khusus Lihat Semua Aktivitas (Read-Only)
 const FULL_ADMIN_IDS = ["64593"];
-const READONLY_ADMIN_IDS = ["GANTI_ID_ADMIN_LIHAT_SAJA"];
+const READONLY_ADMIN_IDS = ["312"];
 
 function isReadOnlyAdminUser(user = currentUser) {
     if (!user) return false;
