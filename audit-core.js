@@ -1,3 +1,33 @@
+function getGroupAuthId(grp) {
+    if (!grp) return "";
+    const direct = normalizeIdToken(grp.AuthID);
+    if (direct) return direct;
+    if (Array.isArray(grp.items)) {
+        for (const it of grp.items) {
+            const aid = normalizeIdToken(it && it.AuthID);
+            if (aid) return aid;
+        }
+    }
+    return "";
+}
+
+function canUserVerifyGroup(grp) {
+    if (!currentUser || !grp) return false;
+    const role = normalizeRoleName(currentUser.Role);
+    const isAdmin = isAdminRole(role);
+    const isSpv = !isAdmin && isSpvVerifierRole(role);
+    if (!isAdmin && !isSpv) return false;
+
+    const authId = getGroupAuthId(grp);
+    if (!authId) return false;
+
+    if (isSpv) {
+        const myId = normalizeIdToken(currentUser.User_ID).toLowerCase();
+        return authId.toLowerCase() === myId;
+    }
+
+    return true;
+}
 const STORE_ROLES = [
     "ADMIN",
     "STORE - ADMIN STAFF HR",
@@ -1062,8 +1092,9 @@ function buildActionButtonsHtml(grp) {
     const role = normalizeRoleName(currentUser && currentUser.Role);
     const isAdmin = isAdminRole(role);
     const isSpv = !isAdmin && isSpvVerifierRole(role);
-    const canRemark = isAdmin || (!isSpv);
-    const canVerify = isAdmin || isSpv;
+    const authId = getGroupAuthId(grp);
+    const canRemark = isAdmin || (!isSpv) || !authId;
+    const canVerify = canUserVerifyGroup(grp);
     const hasRemarks = Boolean(String(grp.Remarks_Kasir || "").trim());
     const rowIndicesCsv = grp.rowIndexes.join(",");
 
@@ -1083,6 +1114,9 @@ function buildActionButtonsHtml(grp) {
                 Verifikasi SPV
             </button>
         `);
+    }
+    if (!btns.length && !authId) {
+        return `<span class="text-[11px] text-slate-400 italic">Tanpa AuthID (Remarks saja)</span>`;
     }
     return btns.join(" ") || `<span class="text-[11px] text-slate-400">-</span>`;
 }
