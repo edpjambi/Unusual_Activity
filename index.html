@@ -715,17 +715,29 @@
             return "";
         }
 
-        // Mengambil nominal dari nama kolom atau nilai pada indeks/posisi kolom tertentu (misal kolom F)
-        function getNominalByPositionOrName(raw, preferredNames = [], fallbackColIdx = 5) {
-            const byName = getFieldCI(raw, preferredNames);
-            if (byName !== "" && byName !== null && byName !== undefined) {
-                return parseCurrencyNumber(byName);
+        // Mendeteksi baris rekap / metadata laporan pada sheet (misal: "Total For ...", "StoreCode-Counter No", "Date :")
+        function isSummaryOrMetaRow(raw, trxNum, cashNum) {
+            const texts = [
+                trxNum,
+                cashNum,
+                getFieldCI(raw, ["Description", "ItemName", "Deskripsi", "Date", "Store", "StoreCodeCounterNo", "User"])
+            ].map(v => String(v || "").trim().toLowerCase());
+
+            const metaPrefixes = [
+                "total for",
+                "total",
+                "store :",
+                "storecode-counter no",
+                "date :",
+                "user :",
+                "matahari dept stores",
+                "parked invoice report detail"
+            ];
+
+            if (texts.some(t => metaPrefixes.some(p => t.startsWith(p)))) {
+                return true;
             }
-            const vals = Object.values(raw || {});
-            if (vals.length > fallbackColIdx && vals[fallbackColIdx] !== "" && vals[fallbackColIdx] !== null && vals[fallbackColIdx] !== undefined) {
-                return parseCurrencyNumber(vals[fallbackColIdx]);
-            }
-            return 0;
+            return false;
         }
 
         // Menyelaraskan baris transaksi (khususnya Parked Invoice agar nominal dari kolom F / header Parked Invoice, bukan kolom D)
@@ -734,29 +746,37 @@
             const normSheet = String(sheetName || "").trim().toLowerCase();
 
             if (normSheet === "parked invoice") {
-                const trxNumRaw = getFieldCI(raw, ["ParkedInvoiceNumber", "Parked Invoice Number", "TRXNUM", "TrxNum", "NoTrx"]);
-                const vals = Object.values(raw);
-                const trxNum = String(trxNumRaw || (vals.length > 3 ? vals[3] : "") || "").trim();
+                const trxNumRaw = getFieldCI(raw, [
+                    "ParkedInvoiceNumber",
+                    "Parked Invoice Number",
+                    "TRXNUM",
+                    "TrxNum",
+                    "NoTrx"
+                ]);
+                const trxNum = String(trxNumRaw || "").trim();
 
-                // Kolom F (index 5) pada Google Sheets / Excel Parked Invoice berheader "Parked Invoice" atau "Amount"
+                // Prioritaskan nilai nominal dari kolom F (header "Parked Invoice" / "Amount" / "ParkedAmount")
+                const colFRaw = getFieldCI(raw, [
+                    "ParkedInvoice",
+                    "Parked Invoice",
+                    "ParkedAmount",
+                    "Parked Amount",
+                    "Amount",
+                    "TotalAmount",
+                    "NetAmount"
+                ]);
+
                 let nominalColF = 0;
-                const colFByHeader = getFieldCI(raw, ["ParkedInvoice", "Parked Invoice", "ParkedAmount", "Amount", "TotalAmount", "NetAmount"]);
-                if (colFByHeader !== "" && colFByHeader !== null && colFByHeader !== undefined) {
-                    const candidate = parseCurrencyNumber(colFByHeader);
-                    if (String(candidate) !== trxNum && candidate > 0) {
-                        nominalColF = candidate;
-                    }
+                if (colFRaw !== "" && colFRaw !== null && colFRaw !== undefined) {
+                    nominalColF = parseCurrencyNumber(colFRaw);
                 }
-                if (!nominalColF && vals.length > 5) {
-                    const candidateIdx5 = parseCurrencyNumber(vals[5]);
-                    if (String(candidateIdx5) !== trxNum && candidateIdx5 > 0) {
-                        nominalColF = candidateIdx5;
-                    }
-                }
+
+                // Fallback jika belum ada nilai nominal dan nilai Amount/Price saat ini bukan nomor invoice kolom D
                 if (!nominalColF) {
-                    const existingAmt = parseCurrencyNumber(raw.Amount ?? raw.Price ?? raw.NetAmount);
-                    if (String(existingAmt) !== trxNum) {
-                        nominalColF = existingAmt;
+                    const fallbackVal = parseCurrencyNumber(raw.Amount ?? raw.Price ?? raw.NetAmount ?? 0);
+                    const trxNumAsNum = parseCurrencyNumber(trxNum);
+                    if (fallbackVal > 0 && !(trxNumAsNum > 0 && fallbackVal === trxNumAsNum)) {
+                        nominalColF = fallbackVal;
                     }
                 }
 
@@ -836,10 +856,10 @@
                     ],
                     "Parked Invoice": [
                         {
-                            id: "PK-1", TrxDate: "2026-11-27", TrxTime: "11:12:30", RegNum: "POS-01",
-                            TRXNUM: "PRK-201", SKU: "8992200310", Description: "Gamis Motif M",
-                            Price: 369000, Amount: 369000, Disc: 0, NetAmount: 369000,
-                            CashNum: "221521", AuthID: "119710",
+                            id: "PK-1", TrxDate: "2026-10-04", TrxTime: "18:23", RegNum: "312-8",
+                            TRXNUM: "304072", SKU: "PARKED", Description: "Parked Invoice 304072",
+                            Price: 4431230, Amount: 4431230, Disc: 0, NetAmount: 4431230,
+                            CashNum: "171385", AuthID: "119710",
                             Remarks_Kasir: "", Waktu_Remarks_Kasir: "",
                             Status_Verifikasi_SPV: "PENDING", SPV_Verifikator_ID: "", SPV_Verifikator_Nama: "",
                             Catatan_SPV: "", Paraf_TTD_Digital_SPV: "", Waktu_Verifikasi_SPV: ""
@@ -869,7 +889,11 @@
                     const parsed = JSON.parse(raw);
                     if (parsed && Array.isArray(parsed.users) && parsed.sheets && typeof parsed.sheets === "object") {
                         TRANSACTION_SHEETS.forEach(s => {
-                            if (!Array.isArray(parsed.sheets[s])) parsed.sheets[s] = [];
+                            if (!Array.isArray(parsed.sheets[s])) {
+                                parsed.sheets[s] = [];
+                            } else {
+                                parsed.sheets[s] = parsed.sheets[s].map((r, i) => normalizeServerRow(s, r, i));
+                            }
                         });
                         return parsed;
                     }
@@ -926,7 +950,6 @@
             const s = String(val).trim();
             if (!s) return "";
 
-            // Format YYYY-MM-DD atau YYYY/MM/DD
             const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
             if (isoMatch) {
                 const y = isoMatch[1];
@@ -935,7 +958,6 @@
                 return `${y}-${m}-${d}`;
             }
 
-            // Format DD/MM/YYYY atau DD-MM-YYYY
             const dmyMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
             if (dmyMatch) {
                 const d = String(dmyMatch[1]).padStart(2, "0");
@@ -1059,6 +1081,7 @@
             setSimulationMode(true);
             hideConnectionError();
             updateConnectionBadge();
+            updateLastSyncBadge("Lokal");
             showToast("Beralih sementara ke Mode Simulasi Lokal.", "info");
         }
 
@@ -1074,22 +1097,45 @@
                 return { ok: false, error: "URL Web App belum dikonfigurasi." };
             }
 
+            const controller = new AbortController();
+            const timerId = setTimeout(() => controller.abort(), 20000);
+
             try {
                 const response = await fetch(url, {
                     method: "POST",
+                    redirect: "follow",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
                 });
-                const json = await response.json();
-                if (json && (json.ok === false || json.status === "error")) {
-                    return { ok: false, error: json.error || json.message || "Respon error dari Apps Script" };
+
+                const rawText = await response.text();
+                let json = null;
+                try {
+                    json = JSON.parse(rawText);
+                } catch (_) {
+                    const errMsg = "Respon server bukan JSON valid (cek izin akses Web App: Anyone).";
+                    showConnectionError(errMsg);
+                    return { ok: false, error: errMsg };
                 }
+
+                if (!response.ok || (json && (json.ok === false || json.status === "error"))) {
+                    const msg = (json && (json.error || json.message)) || `HTTP ${response.status}`;
+                    showConnectionError(`Server Apps Script mengembalikan error: ${msg}`);
+                    return { ok: false, error: msg };
+                }
+
                 hideConnectionError();
                 return { ok: true, data: json.data !== undefined ? json.data : json };
             } catch (err) {
                 console.error("GAS API Error:", err);
-                showConnectionError("Tidak dapat menjangkau server Apps Script. Pastikan URL /exec benar dan deploy diakses oleh Anyone.");
-                return { ok: false, error: err.message || "Network error" };
+                const msg = err.name === "AbortError"
+                    ? "Permintaan ke Apps Script melebihi batas waktu (timeout 20 detik)."
+                    : "Tidak dapat menjangkau server Apps Script. Pastikan URL /exec benar dan deploy diakses oleh Anyone.";
+                showConnectionError(msg);
+                return { ok: false, error: err.message || msg };
+            } finally {
+                clearTimeout(timerId);
             }
         }
 
@@ -1191,7 +1237,7 @@
         }
 
         function updateAdminOnlyVisibility() {
-            const isAdmin = Boolean(currentUser && (currentUser.Role === "ADMIN" || currentUser.role === "ADMIN"));
+            const isAdmin = Boolean(currentUser && currentUser.Role === "ADMIN");
             ["btn-header-settings", "btn-footer-settings", "btn-banner-sim"].forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
@@ -1992,11 +2038,15 @@
             const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
             if (!Array.isArray(matrix) || matrix.length === 0) return [];
 
-            const headerTokens = ["trxdate", "trxnum", "sku", "cashnum", "authid", "amount", "price", "netamount", "description", "regnum", "item"];
+            const headerTokens = [
+                "trxdate", "trxnum", "sku", "cashnum", "authid", "amount", "price",
+                "netamount", "description", "regnum", "item",
+                "parkedinvoicenumber", "parkedinvoice", "timeofparking", "cashiernameandid"
+            ];
             let headerRowIdx = 0;
             let bestScore = -1;
 
-            for (let i = 0; i < Math.min(10, matrix.length); i++) {
+            for (let i = 0; i < Math.min(12, matrix.length); i++) {
                 const rowCells = (matrix[i] || []).map(c => String(c).toLowerCase().replace(/[^a-z0-9]/g, ""));
                 const score = rowCells.filter(c => headerTokens.some(t => c === t || c.includes(t))).length;
                 if (score > bestScore) {
@@ -2048,7 +2098,9 @@
                         const sheetRowsToSend = [];
 
                         rawRows.forEach((raw, idx) => {
-                            const norm = resolveTransactionRowFields(sheetName, normalizeServerRow(sheetName, raw, idx));
+                            const norm = normalizeServerRow(sheetName, raw, idx);
+                            if (isSummaryOrMetaRow(raw, norm.TRXNUM, norm.CashNum)) return;
+
                             const rec = {
                                 ...norm,
                                 id: `${sheetName.slice(0, 2).toUpperCase()}-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`
@@ -2429,7 +2481,7 @@
         // 11. PENGATURAN (KHUSUS ADMIN) & INISIALISASI
         // =====================================================
         function openSettingsModal() {
-            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
+            if (!currentUser || currentUser.Role !== "ADMIN") return;
             document.getElementById("gas-url-input").value = getGasUrl();
             document.getElementById("sim-mode-toggle").checked = isSimulationMode();
             document.getElementById("config-modal").classList.remove("hidden");
@@ -2445,7 +2497,7 @@
         }
 
         function resetDefaultUrl() {
-            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
+            if (!currentUser || currentUser.Role !== "ADMIN") return;
             document.getElementById("gas-url-input").value = DEFAULT_GAS_URL;
             document.getElementById("sim-mode-toggle").checked = false;
             showToast("URL Web App bawaan diisi. Klik Simpan Pengaturan.", "info");
@@ -2453,7 +2505,7 @@
 
         async function saveSettings(e) {
             e.preventDefault();
-            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
+            if (!currentUser || currentUser.Role !== "ADMIN") return;
             const url = document.getElementById("gas-url-input").value.trim();
             const manualSim = document.getElementById("sim-mode-toggle").checked;
 
@@ -2471,22 +2523,24 @@
             if (!isSimulationMode()) {
                 await refreshAllData(true);
             } else {
+                updateLastSyncBadge("Lokal");
                 showToast("Mode Simulasi Lokal aktif.", "info");
             }
         }
 
         function resetLocalSimulationData() {
-            if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
+            if (!currentUser || currentUser.Role !== "ADMIN") return;
             askConfirm(
                 "Reset Data Simulasi Lokal",
                 "Data transaksi dan user di penyimpanan lokal browser akan dikembalikan ke data contoh awal Store 312. Lanjutkan?",
                 () => {
-                    if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.Role !== "ADMIN")) return;
+                    if (!currentUser || currentUser.Role !== "ADMIN") return;
                     db = createDefaultDb();
                     saveDb(db);
                     closeSettingsModal();
                     renderTabs();
                     renderSheetView();
+                    updateLatestDataDateBadge();
                     showToast("Data simulasi lokal direset ke awal.", "info");
                 }
             );
