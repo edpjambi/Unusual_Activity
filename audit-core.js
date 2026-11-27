@@ -1,3 +1,29 @@
+// Konfigurasi ID Admin Penuh (default: 64593) & 1 ID Admin Khusus Lihat Semua Aktivitas (Read-Only)
+const FULL_ADMIN_IDS = ["64593"];
+const READONLY_ADMIN_IDS = ["GANTI_ID_ADMIN_LIHAT_SAJA"];
+
+function isReadOnlyAdminUser(user = currentUser) {
+    if (!user) return false;
+    const uid = normalizeIdToken(user.User_ID).toLowerCase();
+    if (!uid) return false;
+    const roList = READONLY_ADMIN_IDS
+        .map(id => normalizeIdToken(id).toLowerCase())
+        .filter(id => id && id !== "ganti_id_admin_lihat_saja");
+    return roList.includes(uid);
+}
+
+function isFullAdminUser(user = currentUser) {
+    if (!user) return false;
+    if (isReadOnlyAdminUser(user)) return false;
+    const uid = normalizeIdToken(user.User_ID).toLowerCase();
+    const role = normalizeRoleName(user.Role);
+    const fullList = FULL_ADMIN_IDS.map(id => normalizeIdToken(id).toLowerCase());
+    return fullList.includes(uid) || isAdminRole(role);
+}
+
+function isAnyAdminViewUser(user = currentUser) {
+    return isFullAdminUser(user) || isReadOnlyAdminUser(user);
+}
 function getGroupAuthId(grp) {
     if (!grp) return "";
     const direct = normalizeIdToken(grp.AuthID);
@@ -13,10 +39,11 @@ function getGroupAuthId(grp) {
 
 function canUserVerifyGroup(grp) {
     if (!currentUser || !grp) return false;
+    if (isReadOnlyAdminUser(currentUser)) return false;
+    const isFullAdmin = isFullAdminUser(currentUser);
     const role = normalizeRoleName(currentUser.Role);
-    const isAdmin = isAdminRole(role);
-    const isSpv = !isAdmin && isSpvVerifierRole(role);
-    if (!isAdmin && !isSpv) return false;
+    const isSpv = !isFullAdmin && isSpvVerifierRole(role);
+    if (!isFullAdmin && !isSpv) return false;
 
     const authId = getGroupAuthId(grp);
     if (!authId) return false;
@@ -835,26 +862,31 @@ function applyRoleView() {
     document.getElementById("user-id-label").textContent = `ID: ${currentUser.User_ID}`;
     document.getElementById("user-role-badge").textContent = roleLabel;
 
-    const isAdmin = isAdminRole(roleLabel);
-    const isSpv = !isAdmin && isSpvVerifierRole(roleLabel);
-    const isSelfScoped = !isAdmin && !isSpv && isSelfScopedRole(roleLabel);
+    const isFullAdmin = isFullAdminUser(currentUser);
+    const isReadOnlyAdmin = isReadOnlyAdminUser(currentUser);
+    const isAnyAdmin = isFullAdmin || isReadOnlyAdmin;
+    const isSpv = !isAnyAdmin && isSpvVerifierRole(roleLabel);
+    const isSelfScoped = !isAnyAdmin && !isSpv && isSelfScopedRole(roleLabel);
 
     const adminBtns = document.getElementById("admin-action-buttons");
-    if (adminBtns) adminBtns.classList.toggle("hidden", !isAdmin);
+    if (adminBtns) adminBtns.classList.toggle("hidden", !isFullAdmin);
     const settingsBtn = document.getElementById("btn-settings");
-    if (settingsBtn) settingsBtn.classList.toggle("hidden", !isAdmin);
+    if (settingsBtn) settingsBtn.classList.toggle("hidden", !isFullAdmin);
 
-    if (activeTab === "MASTER_USER" && !isAdmin) {
+    if (activeTab === "MASTER_USER" && !isAnyAdmin) {
         window.location.href = "index.html";
         return;
     }
 
-    if (isAdmin) {
-        document.getElementById("role-banner-title").textContent = `Mode ${roleLabel}: Akses penuh ke seluruh 8 sheet transaksi, upload Excel harian, download laporan, dan kelola Master User.`;
+    if (isReadOnlyAdmin) {
+        document.getElementById("role-banner-title").textContent = `Mode ADMIN AUDITOR (Hanya Lihat): Memantau seluruh aktivitas & data 8 sheet transaksi serta Master User.`;
+        document.getElementById("role-banner-desc").textContent = "Mode khusus pemantauan (read-only): Anda dapat melihat seluruh data dan aktivitas, tanpa akses ubah/hapus/upload/verifikasi/pengaturan.";
+    } else if (isFullAdmin) {
+        document.getElementById("role-banner-title").textContent = `Mode ${roleLabel} (ID ${currentUser.User_ID}): Akses penuh ke seluruh 8 sheet transaksi, upload Excel harian, download laporan, dan kelola Master User.`;
         document.getElementById("role-banner-desc").textContent = "Anda dapat memantau remarks, melakukan verifikasi SPV, mengunggah file Excel, mengekspor data, serta menghapus data per rentang tanggal.";
     } else if (isSpv) {
-        document.getElementById("role-banner-title").textContent = `Mode ${roleLabel}: Verifikasi & paraf digital seluruh transaksi setelah remarks terisi.`;
-        document.getElementById("role-banner-desc").textContent = "Pilih transaksi yang sudah memiliki remarks untuk melakukan Approval atau Rejection beserta paraf digital.";
+        document.getElementById("role-banner-title").textContent = `Mode ${roleLabel}: Data yang tampil hanya transaksi dengan AuthID sesuai ID Anda (${currentUser.User_ID}).`;
+        document.getElementById("role-banner-desc").textContent = "Anda hanya melihat dan memverifikasi transaksi yang AuthID-nya cocok dengan ID Anda sendiri.";
     } else if (isSelfScoped) {
         document.getElementById("role-banner-title").textContent = `Mode ${roleLabel}: Isi remarks/keterangan pada transaksi yang terkait ID Anda.`;
         document.getElementById("role-banner-desc").textContent = "Hanya transaksi yang cocok dengan CashNum / AuthID Anda yang ditampilkan.";
@@ -867,9 +899,20 @@ function applyRoleView() {
 function getAccessibleRowsForSheet(sheetName) {
     const rows = db.sheets[sheetName] || [];
     if (!currentUser) return [];
+    if (isFullAdminUser(currentUser) || isReadOnlyAdminUser(currentUser)) return rows;
+
     const role = normalizeRoleName(currentUser.Role);
-    if (isAdminRole(role) || isSpvVerifierRole(role) || !isSelfScopedRole(role)) return rows;
     const myId = normalizeIdToken(currentUser.User_ID).toLowerCase();
+
+    if (isSpvVerifierRole(role)) {
+        return rows.filter(r => {
+            const aId = normalizeIdToken(r.AuthID).toLowerCase();
+            return Boolean(aId) && aId === myId;
+        });
+    }
+
+    if (!isSelfScopedRole(role)) return rows;
+
     return rows.filter(r => {
         const cId = normalizeIdToken(r.CashNum).toLowerCase();
         const aId = normalizeIdToken(r.AuthID).toLowerCase();
@@ -886,8 +929,7 @@ function getRowAuditCategory(row) {
 }
 
 function updateKpiCards() {
-    const role = String((currentUser && currentUser.Role) || "").toUpperCase();
-    const showMasterUser = role.includes("ADMIN") && activeTab === "MASTER_USER";
+    const showMasterUser = isAnyAdminViewUser(currentUser) && activeTab === "MASTER_USER";
     if (showMasterUser) {
         document.getElementById("kpi-total").textContent = db.users.length;
         document.getElementById("kpi-pending-remarks").textContent = 0;
@@ -1089,11 +1131,14 @@ function buildItemBoxHtml(grp) {
 }
 
 function buildActionButtonsHtml(grp) {
+    if (isReadOnlyAdminUser(currentUser)) {
+        return `<span class="text-[11px] text-slate-400 italic">Hanya Lihat</span>`;
+    }
+    const isFullAdmin = isFullAdminUser(currentUser);
     const role = normalizeRoleName(currentUser && currentUser.Role);
-    const isAdmin = isAdminRole(role);
-    const isSpv = !isAdmin && isSpvVerifierRole(role);
+    const isSpv = !isFullAdmin && isSpvVerifierRole(role);
     const authId = getGroupAuthId(grp);
-    const canRemark = isAdmin || (!isSpv) || !authId;
+    const canRemark = isFullAdmin || (!isSpv) || !authId;
     const canVerify = canUserVerifyGroup(grp);
     const hasRemarks = Boolean(String(grp.Remarks_Kasir || "").trim());
     const rowIndicesCsv = grp.rowIndexes.join(",");
@@ -1199,15 +1244,19 @@ function renderMobileCards(groups) {
 function renderMasterUserTable() {
     const tbody = document.getElementById("master-user-tbody");
     if (!tbody) return;
+    const ro = isReadOnlyAdminUser(currentUser);
     tbody.innerHTML = db.users.map((u, idx) => `
         <tr>
             <td class="py-2.5 px-3 font-bold text-slate-900">${u.User_ID}</td>
             <td class="py-2.5 px-3">${u.Nama_Lengkap}</td>
             <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">${u.Role}</span></td>
-            <td class="py-2.5 px-3 font-mono">${u.PIN_Password}</td>
+            <td class="py-2.5 px-3 font-mono">${ro ? "••••••" : u.PIN_Password}</td>
             <td class="py-2.5 px-3">${u.Status_Aktif}</td>
             <td class="py-2.5 px-3 text-right">
-                <button onclick="openUserModal(${idx})" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold">Edit</button>
+                ${ro
+                    ? `<span class="text-[11px] text-slate-400 italic">Hanya Lihat</span>`
+                    : `<button onclick="openUserModal(${idx})" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold">Edit</button>`
+                }
             </td>
         </tr>
     `).join("");
@@ -1476,6 +1525,7 @@ function openRemarksModal(sheetName, rowIndexOrCsv) {
 }
 
 async function submitRemarks() {
+    if (isReadOnlyAdminUser(currentUser)) return;
     if (!activeRemarksCtx) return;
     const { sheetName, rows } = activeRemarksCtx;
     const remarks = document.getElementById("remarks-input").value.trim();
@@ -1566,6 +1616,7 @@ function initSignatureEvents() {
 }
 
 async function submitVerification() {
+    if (isReadOnlyAdminUser(currentUser)) return;
     if (!activeSpvCtx) return;
     const { sheetName, rows } = activeSpvCtx;
     const status = document.getElementById("spv-status-select").value;
@@ -1632,6 +1683,7 @@ function openDeleteRangeModal() {
 }
 
 async function submitDeleteByDateRange() {
+    if (isReadOnlyAdminUser(currentUser)) return;
     const startDate = document.getElementById("delete-start-date").value;
     const endDate = document.getElementById("delete-end-date").value;
     const sheets = Array.from(document.querySelectorAll(".del-sheet-cb:checked")).map(cb => cb.value);
@@ -1746,6 +1798,7 @@ function openUserModal(idx = -1) {
 }
 
 async function submitSaveUser() {
+    if (isReadOnlyAdminUser(currentUser)) return;
     const userId = normalizeIdToken(document.getElementById("mu-userid").value);
     const nama = document.getElementById("mu-nama").value.trim();
     const role = normalizeRoleName(document.getElementById("mu-role").value);
