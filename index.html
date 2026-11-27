@@ -715,7 +715,6 @@
             return "";
         }
 
-        // Mendeteksi baris rekap / metadata laporan pada sheet (misal: "Total For ...", "StoreCode-Counter No", "Date :")
         function isSummaryOrMetaRow(raw, trxNum, cashNum) {
             const texts = [
                 trxNum,
@@ -729,18 +728,18 @@
                 "store :",
                 "storecode-counter no",
                 "date :",
+                "time :",
                 "user :",
                 "matahari dept stores",
-                "parked invoice report detail"
+                "parked invoice report detail",
+                "unmatch journal",
+                "void bill"
             ];
 
-            if (texts.some(t => metaPrefixes.some(p => t.startsWith(p)))) {
-                return true;
-            }
-            return false;
+            return texts.some(t => metaPrefixes.some(p => t.startsWith(p)));
         }
 
-        // Menyelaraskan baris transaksi (khususnya Parked Invoice agar nominal dari kolom F / header Parked Invoice, bukan kolom D)
+        // Penyesuaian mapping per sheet sesuai struktur header masing-masing sheet
         function resolveTransactionRowFields(sheetName, raw) {
             if (!raw || typeof raw !== "object") return raw;
             const normSheet = String(sheetName || "").trim().toLowerCase();
@@ -755,7 +754,7 @@
                 ]);
                 const trxNum = String(trxNumRaw || "").trim();
 
-                // Prioritaskan nilai nominal dari kolom F (header "Parked Invoice" / "Amount" / "ParkedAmount")
+                // Kolom F berheader "Parked Invoice" atau "Amount" (bukan kolom D "Parked Invoice Number")
                 const colFRaw = getFieldCI(raw, [
                     "ParkedInvoice",
                     "Parked Invoice",
@@ -770,8 +769,6 @@
                 if (colFRaw !== "" && colFRaw !== null && colFRaw !== undefined) {
                     nominalColF = parseCurrencyNumber(colFRaw);
                 }
-
-                // Fallback jika belum ada nilai nominal dan nilai Amount/Price saat ini bukan nomor invoice kolom D
                 if (!nominalColF) {
                     const fallbackVal = parseCurrencyNumber(raw.Amount ?? raw.Price ?? raw.NetAmount ?? 0);
                     const trxNumAsNum = parseCurrencyNumber(trxNum);
@@ -780,7 +777,7 @@
                     }
                 }
 
-                const discVal = parseCurrencyNumber(getFieldCI(raw, ["Disc", "TotalDisc", "DiscManual", "DiscAuto"]) || raw.Disc || 0);
+                const discVal = parseCurrencyNumber(getFieldCI(raw, ["Disc", "TotalDisc", "DiscManual"]) || raw.Disc || 0);
                 const netVal = Math.max(0, nominalColF - discVal);
 
                 return {
@@ -790,6 +787,38 @@
                     Amount: nominalColF,
                     Disc: discVal,
                     NetAmount: netVal
+                };
+            }
+
+            if (normSheet === "price overide") {
+                const newPrice = parseCurrencyNumber(getFieldCI(raw, ["NewPrice", "New Price"]));
+                const origPrice = parseCurrencyNumber(getFieldCI(raw, ["OrigPrice", "Orig Price", "Price"]));
+                const finalPrice = newPrice || origPrice || 0;
+                const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY"]) || 1) || 1;
+                const amount = finalPrice * qty;
+                return {
+                    ...raw,
+                    Price: finalPrice,
+                    Amount: amount,
+                    Disc: 0,
+                    NetAmount: amount
+                };
+            }
+
+            if (normSheet === "disc manual") {
+                const price = parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE"]));
+                const amount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT"])) || price;
+                const totalDiscRaw = getFieldCI(raw, ["TotalDisc", "Total Disc", "DiscManual", "Disc Manual"]);
+                const discAuto = parseCurrencyNumber(getFieldCI(raw, ["DiscAuto", "Disc Auto"]));
+                const disc = totalDiscRaw !== "" ? parseCurrencyNumber(totalDiscRaw) : discAuto;
+                const paymentRaw = getFieldCI(raw, ["Payment", "NetAmount", "Net"]);
+                const net = paymentRaw !== "" ? parseCurrencyNumber(paymentRaw) : Math.max(0, amount - disc);
+                return {
+                    ...raw,
+                    Price: price,
+                    Amount: amount,
+                    Disc: disc,
+                    NetAmount: net
                 };
             }
 
@@ -944,7 +973,6 @@
             updateLatestDataDateBadge();
         }
 
-        // Parse berbagai format tanggal ke YYYY-MM-DD agar perbandingan rentang & urutan tanggal akurat
         function parseToIsoDate(val) {
             if (!val) return "";
             const s = String(val).trim();
@@ -1140,22 +1168,34 @@
         }
 
         function normalizeServerRow(sheetName, raw, idx = 0) {
+            const qty = parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY", "Quantity"]) || 1) || 1;
+            const rawPrice = parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE", "UnitPrice", "OrigPrice", "NewPrice"]));
+            const rawAmount = parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT", "GrossAmount", "TotalAmount", "ParkedInvoice", "Parked Invoice"]));
+            const rawDisc = parseCurrencyNumber(getFieldCI(raw, [
+                "TotalDisc", "Total Disc", "DiscManual", "Disc Manual", "DiscAmount", "Disc", "DISC", "Discount"
+            ]));
+            const rawNet = parseCurrencyNumber(getFieldCI(raw, ["NetAmount", "Payment", "Net", "TotalNet"]));
+
+            const amount = rawAmount || (rawPrice ? rawPrice * qty : 0);
+            const price = rawPrice || (amount && qty ? amount / qty : amount);
+            const netAmount = rawNet || (amount ? Math.max(0, amount - rawDisc) : 0);
+
             const base = {
                 id: String(getFieldCI(raw, ["id", "_id", "rowId"]) || `${sheetName.slice(0, 2).toUpperCase()}-${idx + 1}`),
                 _rowIndex: raw._rowIndex || (idx + 2),
-                TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Date", "Tanggal"])),
-                TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Time", "TimeOfParking", "CreateTime", "Jam"])),
-                RegNum: String(getFieldCI(raw, ["RegNum", "REGNUM", "POS", "StoreCounter", "Counter"]) || "POS-01").trim(),
-                TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum", "NoTrx", "ParkedInvoiceNumber", "Parked Invoice Number"]) || "").trim(),
+                TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Trx Date", "Date", "Tanggal"])),
+                TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Trx Time", "CreateTime", "TimeOfParking", "Time Of Parking", "Time", "Jam"])),
+                RegNum: String(getFieldCI(raw, ["RegNum", "REGNUM", "Reg Num", "CounterId", "CounterID", "POS", "StoreCounter"]) || "POS-01").trim(),
+                TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum", "Trx Num", "NoTrx", "ParkedInvoiceNumber", "Parked Invoice Number"]) || "").trim(),
                 SKU: String(getFieldCI(raw, ["SKU", "ItemCode", "PLU", "Article"]) || "").trim(),
                 Description: String(getFieldCI(raw, ["Description", "ItemName", "Deskripsi", "NamaBarang", "Item"]) || "-").trim(),
-                Qty: parseCurrencyNumber(getFieldCI(raw, ["Qty", "QTY", "Quantity"]) || 1) || 1,
-                Price: parseCurrencyNumber(getFieldCI(raw, ["Price", "PRICE", "UnitPrice", "Harga"])),
-                Amount: parseCurrencyNumber(getFieldCI(raw, ["Amount", "AMOUNT", "GrossAmount", "TotalAmount", "ParkedInvoice", "Parked Invoice"])),
-                Disc: parseCurrencyNumber(getFieldCI(raw, ["TotalDisc", "Total Disc", "DiscManual", "Disc Manual", "DiscAmount", "Disc", "Discount", "Potongan"])),
-                NetAmount: parseCurrencyNumber(getFieldCI(raw, ["NetAmount", "Payment", "Net", "TotalNet"])),
+                Qty: qty,
+                Price: price,
+                Amount: amount,
+                Disc: rawDisc,
+                NetAmount: netAmount,
                 CashNum: String(getFieldCI(raw, ["CashNum", "Cash Num", "CashierID", "Cashier", "KasirID"]) || "").trim(),
-                AuthID: String(getFieldCI(raw, ["AuthID", "Auth ID", "SPV_ID", "SupervisorID", "ApproverID"]) || "").trim(),
+                AuthID: String(getFieldCI(raw, ["AuthID", "AuthId", "Auth ID", "SPV_ID", "SupervisorID"]) || "").trim(),
                 Remarks_Kasir: String(getFieldCI(raw, ["Remarks_Kasir", "RemarksKasir", "Remarks"]) || "").trim(),
                 Waktu_Remarks_Kasir: String(getFieldCI(raw, ["Waktu_Remarks_Kasir", "WaktuRemarksKasir"]) || "").trim(),
                 Status_Verifikasi_SPV: String(getFieldCI(raw, ["Status_Verifikasi_SPV", "StatusVerifikasiSPV", "Status"]) || "PENDING").trim() || "PENDING",
@@ -1165,10 +1205,6 @@
                 Paraf_TTD_Digital_SPV: String(getFieldCI(raw, ["Paraf_TTD_Digital_SPV", "ParafSPV"]) || "").trim(),
                 Waktu_Verifikasi_SPV: String(getFieldCI(raw, ["Waktu_Verifikasi_SPV", "WaktuVerifikasiSPV"]) || "").trim()
             };
-
-            if (!base.Amount && base.Price) base.Amount = base.Price * base.Qty;
-            if (!base.Price && base.Amount) base.Price = base.Amount;
-            if (!base.NetAmount && base.Amount) base.NetAmount = Math.max(0, base.Amount - base.Disc);
 
             return resolveTransactionRowFields(sheetName, base);
         }
@@ -1207,7 +1243,9 @@
                     const incomingSheets = payload.sheets || payload;
                     TRANSACTION_SHEETS.forEach(sName => {
                         if (Array.isArray(incomingSheets[sName])) {
-                            db.sheets[sName] = incomingSheets[sName].map((r, i) => normalizeServerRow(sName, r, i));
+                            db.sheets[sName] = incomingSheets[sName]
+                                .map((r, i) => normalizeServerRow(sName, r, i))
+                                .filter(r => !isSummaryOrMetaRow(r, r.TRXNUM, r.CashNum));
                         }
                     });
 
@@ -1436,7 +1474,7 @@
                 const active = activeTab === tab;
                 const count = tab === MASTER_USER_TAB ? db.users.length : getVisibleRowsForSheet(tab).length;
                 return `
-                    <button type="button" onclick="switchTab('${tab.replace(/'/g, "\\'")}')"
+                    <button type="button" onclick="switchTab('${tab.replace(/'/g, "\'")}')"
                         class="px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
                             active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
                         }">
@@ -1493,7 +1531,7 @@
 
             if (role === "ADMIN") {
                 parts.push(`
-                    <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
+                    <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\'")}', '${grp.primaryId}')"
                         class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                         ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
                     </button>
@@ -1501,7 +1539,7 @@
             } else if (role === "KASIR / SA" && isCashOwner) {
                 if (!isVerified) {
                     parts.push(`
-                        <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
+                        <button type="button" onclick="openRemarksModal('${activeTab.replace(/'/g, "\'")}', '${grp.primaryId}')"
                             class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                             ${hasRemarks ? "Edit Remarks" : "Isi Remarks"}
                         </button>
@@ -1525,7 +1563,7 @@
                     `);
                 } else {
                     parts.push(`
-                        <button type="button" onclick="openVerifyModal('${activeTab.replace(/'/g, "\\'")}', '${grp.primaryId}')"
+                        <button type="button" onclick="openVerifyModal('${activeTab.replace(/'/g, "\'")}', '${grp.primaryId}')"
                             class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition">
                             ${isVerified ? "Ubah Verifikasi & Paraf" : "Verifikasi & Paraf"}
                         </button>
@@ -2040,7 +2078,8 @@
 
             const headerTokens = [
                 "trxdate", "trxnum", "sku", "cashnum", "authid", "amount", "price",
-                "netamount", "description", "regnum", "item",
+                "netamount", "description", "regnum", "item", "createtime",
+                "origprice", "newprice", "payment", "totaldisc",
                 "parkedinvoicenumber", "parkedinvoice", "timeofparking", "cashiernameandid"
             ];
             let headerRowIdx = 0;
