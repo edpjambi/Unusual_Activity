@@ -758,18 +758,18 @@
                 const dt = formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Date"]));
                 const tm = formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Time"]));
                 const sku = String(getFieldCI(raw, ["SKU"]) || "").trim();
+                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
                 const reg = String(getFieldCI(raw, ["RegNum", "REGNUM"]) || "").trim();
                 const cash = String(getFieldCI(raw, ["CashNum"]) || "").trim();
-                const counter = String(getFieldCI(raw, ["CounterID", "CounterId"]) || "").trim();
                 return {
                     ...raw,
-                    TrxDate: dt || raw.TrxDate,
-                    TrxTime: tm || raw.TrxTime,
+                    TrxDate: dt || formatExcelDate(raw.TrxDate),
+                    TrxTime: tm || formatExcelTime(raw.TrxTime),
                     TRXNUM: noVal ? `NO-${noVal}` : (raw.TRXNUM || ""),
                     SKU: sku || raw.SKU,
-                    RegNum: reg || counter || raw.RegNum,
+                    RegNum: counter || reg || raw.RegNum,
                     CashNum: cash || raw.CashNum,
-                    Description: counter ? `Counter: ${counter}` : (raw.Description || "-"),
+                    Description: reg ? `RegNum: ${reg}` : (raw.Description || "-"),
                     Price: 0,
                     Amount: 0,
                     Disc: 0,
@@ -781,12 +781,12 @@
             // 2. Parked Invoice: Counter & Date' | Cashier Name and ID | Parked Invoice Number | Time Of Parking | Amount
             if (normSheet === "parked invoice") {
                 const counterDateRaw = String(getFieldCI(raw, ["Counter & Date'", "Counter & Date", "CounterDate", "Counter & Date "]) || "").trim();
-                let parsedReg = raw.RegNum || "";
+                let parsedCounter = raw.RegNum || "";
                 let parsedDate = raw.TrxDate || "";
                 if (counterDateRaw) {
                     const parts = counterDateRaw.split(/\s+/);
                     if (parts.length >= 2) {
-                        parsedReg = parts[0];
+                        parsedCounter = parts[0];
                         parsedDate = parts.slice(1).join(" ");
                     } else {
                         parsedDate = counterDateRaw;
@@ -812,9 +812,9 @@
 
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(parsedDate) || raw.TrxDate,
-                    TrxTime: parkTime || raw.TrxTime,
-                    RegNum: parsedReg || raw.RegNum,
+                    TrxDate: formatExcelDate(parsedDate) || formatExcelDate(raw.TrxDate),
+                    TrxTime: parkTime || formatExcelTime(raw.TrxTime),
+                    RegNum: parsedCounter || raw.RegNum,
                     TRXNUM: trxNum || raw.TRXNUM,
                     SKU: "PARKED",
                     Description: parsedCashName ? `Kasir: ${parsedCashName}` : (cashierRaw || `Parked Invoice ${trxNum}`),
@@ -835,16 +835,18 @@
                 const disc = parseCurrencyNumber(getFieldCI(raw, ["DISC", "Disc"]));
                 const net = Math.max(0, amount - disc);
                 const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
+                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
+                const reg = String(getFieldCI(raw, ["REGNUM", "RegNum"]) || "").trim();
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || raw.TrxDate,
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["CreateTime", "TrxTime"])) || raw.TrxTime,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || formatExcelDate(raw.TrxDate),
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["CreateTime", "TrxTime"])) || formatExcelTime(raw.TrxTime),
                     SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
                     TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
-                    RegNum: String(getFieldCI(raw, ["REGNUM", "RegNum"]) || raw.RegNum || "").trim(),
+                    RegNum: counter || reg || raw.RegNum,
                     CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
                     AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
-                    Description: pType ? `Qty: ${qty} • ${pType}` : `Qty: ${qty}`,
+                    Description: [reg ? `Reg: ${reg}` : "", `Qty: ${qty}`, pType].filter(Boolean).join(" • "),
                     Qty: qty,
                     Price: price,
                     Amount: amount,
@@ -861,16 +863,18 @@
                 const amount = parseCurrencyNumber(getFieldCI(raw, ["AMOUNT", "Amount"])) || (price * qty);
                 const desc = String(getFieldCI(raw, ["Description"]) || "").trim();
                 const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
+                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
+                const reg = String(getFieldCI(raw, ["REGNUM", "RegNum"]) || "").trim();
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || raw.TrxDate,
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || raw.TrxTime,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || formatExcelDate(raw.TrxDate),
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || formatExcelTime(raw.TrxTime),
                     SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
                     TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
-                    RegNum: String(getFieldCI(raw, ["REGNUM", "RegNum"]) || raw.RegNum || "").trim(),
+                    RegNum: counter || reg || raw.RegNum,
                     CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
                     AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
-                    Description: desc || (pType ? `Qty: ${qty} • ${pType}` : `Qty: ${qty}`),
+                    Description: desc || [reg ? `Reg: ${reg}` : "", `Qty: ${qty}`, pType].filter(Boolean).join(" • "),
                     Qty: qty,
                     Price: price,
                     Amount: amount,
@@ -889,16 +893,18 @@
                 const netRaw = getFieldCI(raw, ["NetAmount"]);
                 const net = netRaw !== "" ? parseCurrencyNumber(netRaw) : Math.max(0, amount - disc);
                 const pType = String(getFieldCI(raw, ["PurchaseType"]) || "").trim();
+                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
+                const reg = String(getFieldCI(raw, ["REGNUM", "RegNum"]) || "").trim();
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || raw.TrxDate,
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["CreateTime", "TrxTime"])) || raw.TrxTime,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || formatExcelDate(raw.TrxDate),
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["CreateTime", "TrxTime"])) || formatExcelTime(raw.TrxTime),
                     SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
                     TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
-                    RegNum: String(getFieldCI(raw, ["REGNUM", "RegNum"]) || raw.RegNum || "").trim(),
+                    RegNum: counter || reg || raw.RegNum,
                     CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
                     AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
-                    Description: pType ? `Qty: ${qty} • ${pType}` : `Qty: ${qty}`,
+                    Description: [reg ? `Reg: ${reg}` : "", `Qty: ${qty}`, pType].filter(Boolean).join(" • "),
                     Qty: qty,
                     Price: price,
                     Amount: amount,
@@ -913,13 +919,15 @@
                 const origPrice = parseCurrencyNumber(getFieldCI(raw, ["OrigPrice", "Orig Price"]));
                 const newPrice = parseCurrencyNumber(getFieldCI(raw, ["NewPrice", "New Price"]));
                 const selisih = Math.max(0, origPrice - newPrice);
+                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
+                const reg = String(getFieldCI(raw, ["REGNUM", "RegNum"]) || "").trim();
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || raw.TrxDate,
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || raw.TrxTime,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TRXDATE", "TrxDate"])) || formatExcelDate(raw.TrxDate),
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || formatExcelTime(raw.TrxTime),
                     SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
                     TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum"]) || raw.TRXNUM || "").trim(),
-                    RegNum: String(getFieldCI(raw, ["REGNUM", "RegNum"]) || raw.RegNum || "").trim(),
+                    RegNum: counter || reg || raw.RegNum,
                     CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
                     AuthID: String(getFieldCI(raw, ["AuthID", "AuthId"]) || raw.AuthID || "").trim(),
                     Description: `Orig: ${formatRupiah(origPrice)} → New: ${formatRupiah(newPrice)}`,
@@ -933,18 +941,18 @@
 
             // 7. Print Duplicate: TrxDate | TrxTime | Store | StoreName | CashNum | TrxNum | CounterId | Role | AuthId | AuthName
             if (normSheet === "print duplicate") {
-                const counter = String(getFieldCI(raw, ["CounterId", "CounterID"]) || "").trim();
+                const counter = String(getFieldCI(raw, ["CounterId", "CounterID", "Counter ID"]) || "").trim();
                 const roleStr = String(getFieldCI(raw, ["Role"]) || "").trim();
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE"])) || raw.TrxDate,
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || raw.TrxTime,
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE"])) || formatExcelDate(raw.TrxDate),
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME"])) || formatExcelTime(raw.TrxTime),
                     CashNum: String(getFieldCI(raw, ["CashNum"]) || raw.CashNum || "").trim(),
                     TRXNUM: String(getFieldCI(raw, ["TrxNum", "TRXNUM"]) || raw.TRXNUM || "").trim(),
                     RegNum: counter || raw.RegNum,
                     AuthID: String(getFieldCI(raw, ["AuthId", "AuthID"]) || raw.AuthID || "").trim(),
                     SKU: "REPRINT",
-                    Description: [counter ? `Counter: ${counter}` : "", roleStr ? `Role: ${roleStr}` : ""].filter(Boolean).join(" • ") || "Print Duplicate",
+                    Description: roleStr ? `Role: ${roleStr}` : "Print Duplicate",
                     Price: 0,
                     Amount: 0,
                     Disc: 0,
@@ -968,11 +976,13 @@
                 const net = paymentRaw !== "" ? parseCurrencyNumber(paymentRaw) : Math.max(0, amount - disc);
                 const discPrc = String(getFieldCI(raw, ["Disc Prc", "DiscPrc"]) || "").trim();
                 const pType = String(getFieldCI(raw, ["Purch Type", "PurchaseType"]) || "").trim();
+                const counter = String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID"]) || "").trim();
+                const reg = String(getFieldCI(raw, ["Reg Num", "RegNum"]) || "").trim();
                 return {
                     ...raw,
-                    TrxDate: formatExcelDate(getFieldCI(raw, ["Trx Date", "TrxDate"])) || raw.TrxDate,
-                    TrxTime: formatExcelTime(getFieldCI(raw, ["Trx Time", "TrxTime"])) || raw.TrxTime,
-                    RegNum: String(getFieldCI(raw, ["Reg Num", "RegNum"]) || raw.RegNum || "").trim(),
+                    TrxDate: formatExcelDate(getFieldCI(raw, ["Trx Date", "TrxDate"])) || formatExcelDate(raw.TrxDate),
+                    TrxTime: formatExcelTime(getFieldCI(raw, ["Trx Time", "TrxTime"])) || formatExcelTime(raw.TrxTime),
+                    RegNum: counter || reg || raw.RegNum,
                     TRXNUM: String(getFieldCI(raw, ["Trx Num", "TrxNum", "TRXNUM"]) || raw.TRXNUM || "").trim(),
                     SKU: String(getFieldCI(raw, ["SKU"]) || raw.SKU || "").trim(),
                     CashNum: String(getFieldCI(raw, ["Cash Num", "CashNum"]) || raw.CashNum || "").trim(),
@@ -992,7 +1002,12 @@
                 };
             }
 
-            return { ...raw, hasNominal: true };
+            return {
+                ...raw,
+                TrxDate: formatExcelDate(raw.TrxDate),
+                TrxTime: formatExcelTime(raw.TrxTime),
+                hasNominal: true
+            };
         }
 
         function formatExcelDate(val) {
@@ -1003,7 +1018,17 @@
                 const p = n => String(n).padStart(2, "0");
                 return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
             }
-            return String(val).trim();
+            const s = String(val).trim();
+            // Handle ISO date string from Google Sheets e.g. "2026-11-01T00:00:00.000Z" or "2026-10-31T17:00:00.000Z"
+            if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+                const d = new Date(s);
+                if (!isNaN(d.getTime())) {
+                    const p = n => String(n).padStart(2, "0");
+                    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+                }
+                return s.slice(0, 10);
+            }
+            return s;
         }
 
         function formatExcelTime(val) {
@@ -1016,7 +1041,13 @@
                 const p = n => String(n).padStart(2, "0");
                 return `${p(h)}:${p(m)}:${p(s)}`;
             }
-            return String(val).trim();
+            const s = String(val).trim();
+            // Handle Google Sheets epoch time string e.g. "1899-12-30T20:41:45.000Z"
+            const isoTimeMatch = s.match(/^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2}:\d{2})/);
+            if (isoTimeMatch) {
+                return isoTimeMatch[1];
+            }
+            return s;
         }
 
         // =====================================================
@@ -1355,7 +1386,7 @@
                 _rowIndex: raw._rowIndex || (idx + 2),
                 TrxDate: formatExcelDate(getFieldCI(raw, ["TrxDate", "TRXDATE", "Trx Date", "Date", "Tanggal"])),
                 TrxTime: formatExcelTime(getFieldCI(raw, ["TrxTime", "TRXTIME", "Trx Time", "CreateTime", "TimeOfParking", "Time Of Parking", "Time", "Jam"])),
-                RegNum: String(getFieldCI(raw, ["RegNum", "REGNUM", "Reg Num", "CounterId", "CounterID", "POS", "StoreCounter"]) || "POS-01").trim(),
+                RegNum: String(getFieldCI(raw, ["CounterID", "CounterId", "Counter ID", "RegNum", "REGNUM", "Reg Num", "POS", "StoreCounter"]) || "-").trim(),
                 TRXNUM: String(getFieldCI(raw, ["TRXNUM", "TrxNum", "Trx Num", "NoTrx", "ParkedInvoiceNumber", "Parked Invoice Number"]) || "").trim(),
                 SKU: String(getFieldCI(raw, ["SKU", "ItemCode", "PLU", "Article"]) || "").trim(),
                 Description: String(getFieldCI(raw, ["Description", "ItemName", "Deskripsi", "NamaBarang", "Item"]) || "-").trim(),
