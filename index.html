@@ -1572,14 +1572,21 @@
         // 6. TABS, HAK AKSES BARIS & RENDER
         // =====================================================
         function getGroupKey(sheetName, r) {
+            const normSheet = String(sheetName || "").trim().toLowerCase();
             const trx = String(r.TRXNUM || "").trim().toUpperCase();
             const dt = String(r.TrxDate || "").trim();
+            const tm = String(r.TrxTime || "").trim();
             const cash = normalizeId(r.CashNum || "");
             const reg = normalizeId(r.RegNum || "");
+
+            // Khusus menu Void-Bill Cancelation: gabungkan berdasarkan tanggal, jam (TrxTime), POS, dan kasir yang sama
+            if (normSheet === "void-bill cancelation") {
+                return `${sheetName}|VOID_TIME|${dt}|${tm}|${reg}|${cash}`;
+            }
+
             if (trx && trx !== "0" && trx !== "-") {
                 return `${sheetName}|TRX|${dt}|${reg}|${trx}|${cash}`;
             }
-            const tm = String(r.TrxTime || "").trim();
             return `${sheetName}|NO_TRX|${dt}|${tm}|${reg}|${cash}|${r.id}`;
         }
 
