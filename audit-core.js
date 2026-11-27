@@ -1,3 +1,54 @@
+const REMARKS_TEMPLATES = {
+    "Unmatch Transaksi": [
+        "Selisih sistem POS dengan fisik struk / EDC",
+        "Double input transaksi pada mesin EDC / POS",
+        "Transaksi gagal cetak struk namun tercatat di sistem",
+        "Koreksi metode pembayaran (Tunai / Debit / QRIS / Kredit)"
+    ],
+    "Parked Invoice": [
+        "Customer mengambil barang tambahan / ketinggalan barang",
+        "Customer menunggu konfirmasi pembayaran / transfer / limit kartu",
+        "Antrean kasir dialihkan sementara ke POS lain",
+        "Transaksi batal setelah di-park (sudah konfirmasi SPV)"
+    ],
+    "Item Correct": [
+        "Salah scan barcode / double scan item oleh kasir",
+        "Customer batal membeli sebagian item sebelum pembayaran",
+        "Penyesuaian kuantitas (QTY) pembelian customer",
+        "Salah input kode SKU / ukuran / warna barang"
+    ],
+    "Void-Bill Cancelation": [
+        "Customer membatalkan seluruh pembelian sebelum pembayaran",
+        "Salah metode pembayaran / salah input promo sehingga bill di-void dan input ulang",
+        "Kendala jaringan EDC / QRIS saat proses pembayaran",
+        "Double transaksi pada nomor struk yang sama"
+    ],
+    "Return": [
+        "Penukaran ukuran / warna barang (sesuai syarat & ketentuan)",
+        "Barang cacat / rusak saat diterima customer",
+        "Salah beli item oleh customer (dengan struk asli & otorisasi SPV)",
+        "Selisih harga / promo tidak terbaca saat transaksi awal"
+    ],
+    "Price Overide": [
+        "Penyesuaian harga sesuai label rak / POP promo berjalan",
+        "Barang display / minor defect dengan persetujuan SPV / Store Manager",
+        "Koreksi harga sistem yang belum ter-update",
+        "Harga khusus member / event store resmi"
+    ],
+    "Print Duplicate": [
+        "Kertas struk habis / macet / terpotong saat pencetakan pertama",
+        "Permintaan copy struk oleh customer untuk klaim / garansi",
+        "Copy struk untuk arsip administrasi / finance store",
+        "Hasil cetak struk pertama buram / tidak terbaca"
+    ],
+    "Disc Manual": [
+        "Diskon promo store / event berjalan yang belum otomatis di POS",
+        "Diskon voucher / kupon fisik / member khusus",
+        "Diskon persetujuan SPV / Store Manager (barang last piece / minor defect)",
+        "Koreksi diskon bundel / beli 2 gratis 1 yang tidak terbaca sistem"
+    ]
+};
+
 const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwEOxipUNxnKSwMYImTzUxa6-9uiCr4Th__eiCcWu8J0AsmjBa-2gYlQn2rr07tcks/exec";
 const STORAGE_KEY = "MDS_312_AUDIT_DB_V1";
 const GAS_URL_KEY = "MDS_312_GAS_URL_V1";
@@ -299,7 +350,7 @@ function normalizeServerRow(sheetName, raw, idx = 0) {
         pickField(raw, ["TrxDate", "Trx Date", "Date", "CounterDate", "Counter Date", "TransactionDate", "Tanggal"])
     );
     if (!trxDate && String(sheetName).toLowerCase() === "parked invoice") {
-        trxDate = normalizeDateIso(getColumnEValue(raw)) || normalizeDateIso(raw._groupDate || "");
+        trxDate = normalizeDateIso(raw._groupDate || "");
     }
 
     const trxTime = normalizeTimeVal(
@@ -973,8 +1024,11 @@ function parseExcelSheetRows(sheetName, ws) {
 
         const joined = rowVals.join(" ");
         const dateMatch = joined.match(/Date\s*:\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/i);
+        const totalForDateMatch = joined.match(/Total\s+For\s+(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/i);
         if (dateMatch) {
             currentGroupDate = normalizeDateIso(dateMatch[1]);
+        } else if (totalForDateMatch) {
+            currentGroupDate = normalizeDateIso(totalForDateMatch[1]);
         }
 
         const lowerJoined = joined.toLowerCase();
@@ -992,11 +1046,6 @@ function parseExcelSheetRows(sheetName, ws) {
         headers.forEach((h, c) => {
             if (h) obj[h] = rowVals[c];
         });
-
-        if (String(sheetName).toLowerCase() === "parked invoice" && rowVals.length >= 5) {
-            const colEDate = normalizeDateIso(rowVals[4]);
-            if (colEDate) obj.TrxDate = colEDate;
-        }
 
         if (!normalizeDateIso(pickField(obj, ["TrxDate", "Date", "CounterDate"])) && currentGroupDate) {
             obj.TrxDate = currentGroupDate;
@@ -1119,6 +1168,31 @@ async function submitExcelUpload() {
     }
 }
 
+function onRemarksTemplateChange() {
+    const sel = document.getElementById("remarks-template-select");
+    const textarea = document.getElementById("remarks-input");
+    if (!sel || !textarea) return;
+    const val = sel.value;
+    if (val === "__MANUAL__") {
+        textarea.focus();
+        return;
+    }
+    if (val) {
+        textarea.value = val;
+        textarea.focus();
+    }
+}
+
+function clearRemarksText() {
+    const sel = document.getElementById("remarks-template-select");
+    const textarea = document.getElementById("remarks-input");
+    if (sel) sel.value = "__MANUAL__";
+    if (textarea) {
+        textarea.value = "";
+        textarea.focus();
+    }
+}
+
 function openRemarksModal(sheetName, rowIndex) {
     const row = (db.sheets[sheetName] || []).find(r => Number(r._rowIndex) === Number(rowIndex));
     if (!row) return;
@@ -1127,7 +1201,25 @@ function openRemarksModal(sheetName, rowIndex) {
         <div><strong>Sheet:</strong> ${sheetName} • <strong>No Trx:</strong> ${row.TRXNUM || "-"}</div>
         <div><strong>SKU:</strong> ${row.SKU || "-"} • <strong>Net:</strong> ${formatRupiah(row.NetAmount)}</div>
     `;
-    document.getElementById("remarks-input").value = row.Remarks_Kasir || "";
+
+    const existingRemarks = String(row.Remarks_Kasir || "").trim();
+    const templates = REMARKS_TEMPLATES[sheetName] || [];
+    const sel = document.getElementById("remarks-template-select");
+    if (sel) {
+        let optsHtml = `<option value="__MANUAL__">-- Tulis Manual / Bebas --</option>`;
+        optsHtml += templates.map(t => `<option value="${t.replace(/"/g, "&quot;")}">${t}</option>`).join("");
+        sel.innerHTML = optsHtml;
+        if (existingRemarks && templates.includes(existingRemarks)) {
+            sel.value = existingRemarks;
+        } else {
+            sel.value = "__MANUAL__";
+        }
+    }
+
+    const textarea = document.getElementById("remarks-input");
+    if (textarea) {
+        textarea.value = existingRemarks;
+    }
     openModal("remarks-modal");
 }
 
