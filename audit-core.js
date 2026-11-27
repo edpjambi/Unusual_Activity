@@ -1,6 +1,6 @@
 // Konfigurasi ID Admin Penuh (default: 64593) & 1 ID Admin Khusus Lihat Semua Aktivitas (Read-Only)
 const FULL_ADMIN_IDS = ["64593"];
-const READONLY_ADMIN_IDS = ["312"];
+const READONLY_ADMIN_IDS = ["GANTI_ID_ADMIN_LIHAT_SAJA"];
 
 function isReadOnlyAdminUser(user = currentUser) {
     if (!user) return false;
@@ -770,6 +770,12 @@ async function refreshAllData(showLoading = true) {
 }
 
 function updateLatestDataDateBadge() {
+    const el = document.getElementById("latest-date-badge");
+    if (!el) return;
+    const canSee = Boolean(currentUser && isAnyAdminViewUser(currentUser));
+    el.classList.toggle("hidden", !canSee);
+    if (!canSee) return;
+
     let maxDate = "";
     TRANSACTION_SHEETS.forEach(s => {
         (db.sheets[s] || []).forEach(r => {
@@ -777,8 +783,7 @@ function updateLatestDataDateBadge() {
             if (d && (!maxDate || d > maxDate)) maxDate = d;
         });
     });
-    const el = document.getElementById("latest-date-badge");
-    if (el) el.textContent = `Data terakhir: ${maxDate || "-"}`;
+    el.textContent = `Data terakhir: ${maxDate || "-"}`;
 }
 
 async function handleLogin(e) {
@@ -839,6 +844,10 @@ function logoutUser() {
     if (settingsBtn) {
         settingsBtn.classList.add("hidden");
     }
+    const latestBadge = document.getElementById("latest-date-badge");
+    if (latestBadge) {
+        latestBadge.classList.add("hidden");
+    }
     if (appView) appView.classList.add("hidden");
     if (loginView) loginView.classList.remove("hidden");
 
@@ -872,6 +881,7 @@ function applyRoleView() {
     if (adminBtns) adminBtns.classList.toggle("hidden", !isFullAdmin);
     const settingsBtn = document.getElementById("btn-settings");
     if (settingsBtn) settingsBtn.classList.toggle("hidden", !isFullAdmin);
+    updateLatestDataDateBadge();
 
     if (activeTab === "MASTER_USER" && !isAnyAdmin) {
         window.location.href = "index.html";
@@ -1898,4 +1908,239 @@ window.addEventListener("DOMContentLoaded", async () => {
         } catch (_) {}
     }
     await refreshAllData(true);
+});
+
+// =====================================================
+// PWA INSTALL & SERVICE WORKER REGISTRATION
+// =====================================================
+let deferredPwaPrompt = null;
+
+window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    deferredPwaPrompt = e;
+    const btn = document.getElementById("btn-install-pwa");
+    if (btn) btn.classList.remove("hidden");
+});
+
+window.addEventListener("appinstalled", () => {
+    deferredPwaPrompt = null;
+    const btn = document.getElementById("btn-install-pwa");
+    if (btn) btn.classList.add("hidden");
+});
+
+async function installPwaApp() {
+    if (!deferredPwaPrompt) {
+        alert("Gunakan menu browser (⋮ / Bagikan) lalu pilih 'Tambahkan ke Layar Utama' atau 'Install App'.");
+        return;
+    }
+    deferredPwaPrompt.prompt();
+    await deferredPwaPrompt.userChoice;
+    deferredPwaPrompt = null;
+    const btn = document.getElementById("btn-install-pwa");
+    if (btn) btn.classList.add("hidden");
+}
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+    });
+}
+
+// =====================================================
+// NOTIFIKASI APLIKASI (BROWSER / OS + IN-APP ALERT)
+// =====================================================
+const NOTIF_PREF_KEY = "MDS_312_NOTIF_ENABLED_V1";
+const NOTIF_SEEN_KEY = "MDS_312_NOTIF_LAST_SIG_V1";
+
+function isNotificationEnabled() {
+    try {
+        return localStorage.getItem(NOTIF_PREF_KEY) === "1";
+    } catch (_) {
+        return false;
+    }
+}
+
+function setNotificationEnabled(val) {
+    try {
+        localStorage.setItem(NOTIF_PREF_KEY, val ? "1" : "0");
+    } catch (_) {}
+    updateNotifButtonLabel();
+}
+
+function updateNotifButtonLabel() {
+    const btn = document.getElementById("btn-notif-pwa");
+    if (!btn) return;
+    if (!("Notification" in window)) {
+        btn.textContent = "Notif: In-App";
+        return;
+    }
+    if (Notification.permission === "granted" && isNotificationEnabled()) {
+        btn.textContent = "Notif: Aktif";
+        btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition";
+    } else if (Notification.permission === "denied") {
+        btn.textContent = "Notif: Diblokir";
+        btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition";
+    } else {
+        btn.textContent = "Notif: Aktifkan";
+        btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition";
+    }
+}
+
+function showInAppToast(title, message) {
+    let toast = document.getElementById("mds-inapp-toast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "mds-inapp-toast";
+        toast.className = "fixed bottom-4 right-4 z-50 max-w-sm w-full bg-slate-900 text-white rounded-2xl shadow-xl border border-slate-700 p-4 space-y-1 transition";
+        document.body.appendChild(toast);
+    }
+    toast.innerHTML = `
+        <div class="flex items-start justify-between gap-2">
+            <div class="text-xs font-extrabold text-amber-300">${title}</div>
+            <button onclick="document.getElementById('mds-inapp-toast')?.remove()" class="text-slate-400 hover:text-white text-xs font-bold">✕</button>
+        </div>
+        <div class="text-xs text-slate-100 leading-relaxed">${message}</div>
+    `;
+    toast.classList.remove("hidden");
+    clearTimeout(window.__mdsToastTimer);
+    window.__mdsToastTimer = setTimeout(() => {
+        const el = document.getElementById("mds-inapp-toast");
+        if (el) el.classList.add("hidden");
+    }, 7000);
+}
+
+function computeUserNotificationSummary() {
+    if (!currentUser) return null;
+    const role = normalizeRoleName(currentUser.Role);
+    const isFullAdmin = isFullAdminUser(currentUser);
+    const isReadOnlyAdmin = isReadOnlyAdminUser(currentUser);
+    const isSpv = !isFullAdmin && !isReadOnlyAdmin && isSpvVerifierRole(role);
+
+    let pendingRemarksCount = 0;
+    let readySpvCount = 0;
+    let totalRows = 0;
+
+    TRANSACTION_SHEETS.forEach(sheet => {
+        const rows = getAccessibleRowsForSheet(sheet);
+        totalRows += rows.length;
+        rows.forEach(r => {
+            const cat = getRowAuditCategory(r);
+            if (cat === "PENDING_REMARKS") pendingRemarksCount++;
+            else if (cat === "READY_SPV") readySpvCount++;
+        });
+    });
+
+    if (isSpv) {
+        return {
+            title: "Audit Kasir MDS 312 • Verifikasi SPV",
+            body: readySpvCount > 0
+                ? `Ada ${readySpvCount} transaksi (AuthID Anda) siap diverifikasi/diparaf.`
+                : `Tidak ada transaksi baru yang siap diverifikasi untuk ID ${currentUser.User_ID}.`,
+            sig: `SPV|${currentUser.User_ID}|${readySpvCount}|${pendingRemarksCount}`
+        };
+    }
+
+    if (isFullAdmin || isReadOnlyAdmin) {
+        return {
+            title: "Audit Kasir MDS 312 • Ringkasan Audit",
+            body: `Pending Remarks: ${pendingRemarksCount} • Siap Verifikasi SPV: ${readySpvCount} (Total data: ${totalRows}).`,
+            sig: `ADMIN|${currentUser.User_ID}|${pendingRemarksCount}|${readySpvCount}|${totalRows}`
+        };
+    }
+
+    return {
+        title: "Audit Kasir MDS 312 • Pengingat Remarks",
+        body: pendingRemarksCount > 0
+            ? `Ada ${pendingRemarksCount} transaksi terkait ID Anda yang belum diisi remarks.`
+            : `Semua transaksi terkait ID Anda sudah memiliki remarks.`,
+        sig: `USER|${currentUser.User_ID}|${pendingRemarksCount}|${readySpvCount}`
+    };
+}
+
+async function sendSystemOrInAppNotification(summary, forceAlert = false) {
+    if (!summary) return;
+    updateNotifButtonLabel();
+
+    let prevSig = "";
+    try {
+        prevSig = localStorage.getItem(NOTIF_SEEN_KEY) || "";
+    } catch (_) {}
+
+    const changed = summary.sig !== prevSig;
+    try {
+        localStorage.setItem(NOTIF_SEEN_KEY, summary.sig);
+    } catch (_) {}
+
+    if (!forceAlert && !changed) return;
+
+    showInAppToast(summary.title, summary.body);
+
+    if ("Notification" in window && Notification.permission === "granted" && isNotificationEnabled()) {
+        try {
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                const reg = await navigator.serviceWorker.ready;
+                if (reg && typeof reg.showNotification === "function") {
+                    await reg.showNotification(summary.title, {
+                        body: summary.body,
+                        icon: "./icon-192.png",
+                        badge: "./icon-192.png",
+                        tag: "mds-312-audit-notif"
+                    });
+                    return;
+                }
+            }
+            new Notification(summary.title, {
+                body: summary.body,
+                icon: "./icon-192.png"
+            });
+        } catch (_) {}
+    }
+}
+
+async function toggleOrTriggerNotifications() {
+    if (!currentUser) {
+        showInAppToast("Info Notifikasi", "Silakan login terlebih dahulu untuk mengecek notifikasi tugas Anda.");
+        return;
+    }
+
+    if (!("Notification" in window)) {
+        const summary = computeUserNotificationSummary();
+        await sendSystemOrInAppNotification(summary, true);
+        return;
+    }
+
+    if (Notification.permission === "default") {
+        const perm = await Notification.requestPermission();
+        if (perm === "granted") {
+            setNotificationEnabled(true);
+            const summary = computeUserNotificationSummary();
+            await sendSystemOrInAppNotification(summary, true);
+            return;
+        }
+    }
+
+    if (Notification.permission === "granted") {
+        const nextState = !isNotificationEnabled();
+        setNotificationEnabled(nextState);
+        const summary = computeUserNotificationSummary();
+        if (nextState) {
+            await sendSystemOrInAppNotification(summary, true);
+        } else {
+            showInAppToast("Notifikasi Perangkat Dinonaktifkan", "Notifikasi pop-up di dalam aplikasi tetap tampil saat ada pembaruan.");
+        }
+        return;
+    }
+
+    const summary = computeUserNotificationSummary();
+    await sendSystemOrInAppNotification(summary, true);
+}
+
+window.addEventListener("load", () => {
+    updateNotifButtonLabel();
+    setTimeout(() => {
+        if (currentUser) {
+            const summary = computeUserNotificationSummary();
+            sendSystemOrInAppNotification(summary, false);
+        }
+    }, 1200);
 });

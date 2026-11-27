@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#e11d48" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Audit MDS 312" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
     <title>Audit Kasir MDS 312 • Item Correct</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -50,7 +57,7 @@
                         <span id="sync-time-badge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
                             Sync: Menunggu
                         </span>
-                        <span id="latest-date-badge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                        <span id="latest-date-badge" class="hidden px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
                             Data terakhir: -
                         </span>
                     </div>
@@ -59,6 +66,12 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
+                <button id="btn-notif-pwa" onclick="toggleOrTriggerNotifications()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition">
+                    Notif: Cek
+                </button>
+                <button id="btn-install-pwa" onclick="installPwaApp()" class="hidden px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition">
+                    Install App
+                </button>
                 <button id="btn-refresh" onclick="refreshAllData(true)" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition">
                     Refresh Data
                 </button>
