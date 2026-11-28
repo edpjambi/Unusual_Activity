@@ -187,49 +187,6 @@
             </div>
         </section>
 
-        <!-- TABEL BELUM REMARKS (KASIR) & BELUM VERIFIKASI (SPV) -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="bg-white rounded-2xl border border-amber-200 p-4 space-y-3">
-                <div>
-                    <h3 class="text-sm font-extrabold text-amber-800">Kasir Belum Mengisi Remarks (Pending Remarks)</h3>
-                    <p class="text-[11px] text-slate-500">Rekap jumlah transaksi yang masih kosong kolom Remarks_Kasir per kasir</p>
-                </div>
-                <div class="overflow-x-auto max-h-80">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead class="sticky top-0 bg-amber-50 border-b border-amber-200 text-amber-900 uppercase">
-                            <tr>
-                                <th class="py-2 px-2.5">#</th>
-                                <th class="py-2 px-2.5">CashNum</th>
-                                <th class="py-2 px-2.5">Nama Kasir</th>
-                                <th class="py-2 px-2.5 text-right">Belum Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody-pending-remarks" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl border border-indigo-200 p-4 space-y-3">
-                <div>
-                    <h3 class="text-sm font-extrabold text-indigo-800">SPV Belum Verifikasi (Status PENDING)</h3>
-                    <p class="text-[11px] text-slate-500">Rekap transaksi ber-AuthID yang belum APPROVED / REJECTED per SPV</p>
-                </div>
-                <div class="overflow-x-auto max-h-80">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead class="sticky top-0 bg-indigo-50 border-b border-indigo-200 text-indigo-900 uppercase">
-                            <tr>
-                                <th class="py-2 px-2.5">#</th>
-                                <th class="py-2 px-2.5">AuthID</th>
-                                <th class="py-2 px-2.5">Nama SPV</th>
-                                <th class="py-2 px-2.5 text-right">Belum Verifikasi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody-pending-spv" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
         <!-- REKAP PER SHEET PER SPV & KASIR -->
         <section class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
             <div>
@@ -255,9 +212,8 @@
     </main>
 
     <script>
-        const STORAGE_KEY = "MDS_312_AUDIT_DB_V1";
+        const STORAGE_KEY = "MDS_312_AUDIT_DB_V2";
         const GAS_URL_KEY = "MDS_312_GAS_URL_V1";
-        const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwEOxipUNxnKSwMYImTzUxa6-9uiCr4Th__eiCcWu8J0AsmjBa-2gYlQn2rr07tcks/exec";
         const SHEETS = [
             "Unmatch Transaksi",
             "Parked Invoice",
@@ -302,21 +258,23 @@
         }
 
         async function syncFreshData() {
-            loadDb();
-            renderAnalytics();
-
-            const gasUrl = (localStorage.getItem(GAS_URL_KEY) || DEFAULT_GAS_URL || "").trim();
-            if (!gasUrl) return;
+            const gasUrl = localStorage.getItem(GAS_URL_KEY);
+            if (!gasUrl) {
+                loadDb();
+                renderAnalytics();
+                return;
+            }
             try {
                 const res = await fetch(gasUrl + (gasUrl.includes("?") ? "&" : "?") + "action=getAllData");
                 const json = await res.json();
                 if (json && json.sheets) {
                     localDb.sheets = json.sheets;
-                    if (json.users) localDb.users = json.users;
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(localDb));
-                    renderAnalytics();
                 }
-            } catch (_) {}
+            } catch (_) {
+                loadDb();
+            }
+            renderAnalytics();
         }
 
         function getRowsByFilter(sheetTarget, dStart, dEnd) {
@@ -333,10 +291,9 @@
             return out;
         }
 
-        function aggregatePeople(rows, idKeys, nameKeys, fallbackUnknown = false, predicate = null) {
+        function aggregatePeople(rows, idKeys, nameKeys, fallbackUnknown = false) {
             const map = new Map();
             rows.forEach(r => {
-                if (typeof predicate === "function" && !predicate(r)) return;
                 let id = "";
                 for (const k of idKeys) {
                     if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== "") {
@@ -383,25 +340,6 @@
             const spvRank = aggregatePeople(rows, ["AuthID", "AuthId", "Auth ID"], ["AuthName", "Auth Name"], false);
             const cashierRank = aggregatePeople(rows, ["CashNum", "Cash Num", "CashierID"], ["CashName", "CashierName"], true);
 
-            const pendingRemarksRank = aggregatePeople(
-                rows,
-                ["CashNum", "Cash Num", "CashierID"],
-                ["CashName", "CashierName"],
-                true,
-                r => !String(r.Remarks_Kasir || r.RemarksKasir || r.Remarks || "").trim()
-            );
-
-            const pendingSpvRank = aggregatePeople(
-                rows,
-                ["AuthID", "AuthId", "Auth ID"],
-                ["AuthName", "Auth Name"],
-                false,
-                r => {
-                    const st = String(r.Status_Verifikasi_SPV || r.StatusVerifikasiSPV || "PENDING").trim().toUpperCase();
-                    return st !== "APPROVED" && st !== "REJECTED";
-                }
-            );
-
             const totalAuthCount = spvRank.reduce((acc, x) => acc + x.count, 0);
             document.getElementById("stat-total-trx").textContent = rows.length.toLocaleString("id-ID");
             document.getElementById("stat-total-auth").textContent = totalAuthCount.toLocaleString("id-ID");
@@ -412,7 +350,8 @@
                 ? `${cashierRank[0].name !== "-" ? cashierRank[0].name : cashierRank[0].id} (${cashierRank[0].count}x)`
                 : "-";
 
-            document.getElementById("tbody-spv").innerHTML = spvRank.length
+            const tbodySpv = document.getElementById("tbody-spv");
+            tbodySpv.innerHTML = spvRank.length
                 ? spvRank.map((item, i) => `
                     <tr class="hover:bg-slate-50">
                         <td class="py-2 px-2.5 font-bold text-slate-500">${i + 1}</td>
@@ -424,7 +363,8 @@
                 `).join("")
                 : `<tr><td colspan="5" class="py-6 text-center text-slate-400">Tidak ada data otorisasi SPV.</td></tr>`;
 
-            document.getElementById("tbody-cashier").innerHTML = cashierRank.length
+            const tbodyCashier = document.getElementById("tbody-cashier");
+            tbodyCashier.innerHTML = cashierRank.length
                 ? cashierRank.map((item, i) => `
                     <tr class="hover:bg-slate-50">
                         <td class="py-2 px-2.5 font-bold text-slate-500">${i + 1}</td>
@@ -435,28 +375,6 @@
                     </tr>
                 `).join("")
                 : `<tr><td colspan="5" class="py-6 text-center text-slate-400">Tidak ada data aktivitas kasir.</td></tr>`;
-
-            document.getElementById("tbody-pending-remarks").innerHTML = pendingRemarksRank.length
-                ? pendingRemarksRank.map((item, i) => `
-                    <tr class="hover:bg-amber-50/40">
-                        <td class="py-2 px-2.5 font-bold text-slate-500">${i + 1}</td>
-                        <td class="py-2 px-2.5 font-bold text-amber-800">${item.id}</td>
-                        <td class="py-2 px-2.5 font-semibold text-slate-800">${item.name}</td>
-                        <td class="py-2 px-2.5 text-right font-extrabold text-amber-700">${item.count}</td>
-                    </tr>
-                `).join("")
-                : `<tr><td colspan="4" class="py-6 text-center text-emerald-600 font-semibold">Semua remarks kasir sudah terisi.</td></tr>`;
-
-            document.getElementById("tbody-pending-spv").innerHTML = pendingSpvRank.length
-                ? pendingSpvRank.map((item, i) => `
-                    <tr class="hover:bg-indigo-50/40">
-                        <td class="py-2 px-2.5 font-bold text-slate-500">${i + 1}</td>
-                        <td class="py-2 px-2.5 font-bold text-indigo-800">${item.id}</td>
-                        <td class="py-2 px-2.5 font-semibold text-slate-800">${item.name}</td>
-                        <td class="py-2 px-2.5 text-right font-extrabold text-indigo-700">${item.count}</td>
-                    </tr>
-                `).join("")
-                : `<tr><td colspan="4" class="py-6 text-center text-emerald-600 font-semibold">Semua transaksi ber-AuthID sudah diverifikasi.</td></tr>`;
 
             const top10Spv = spvRank.slice(0, 10);
             if (spvChartInstance) spvChartInstance.destroy();
@@ -529,6 +447,8 @@
         }
 
         window.addEventListener("DOMContentLoaded", () => {
+            loadDb();
+            renderAnalytics();
             syncFreshData();
         });
     </script>

@@ -1241,21 +1241,33 @@ function renderMobileCards(groups) {
         return;
     }
 
-    container.innerHTML = groups.map(grp => `
-        <div class="border border-slate-200 rounded-xl p-3 space-y-2.5 bg-white">
-            <div class="flex items-center justify-between text-xs">
+    container.innerHTML = groups.map(grp => {
+        const authId = getGroupAuthId(grp) || grp.AuthID || "";
+        const authName = grp.AuthName || (Array.isArray(grp.items) ? (grp.items.find(it => it && it.AuthName)?.AuthName || "") : "");
+        const spvStatus = String(grp.Status_Verifikasi_SPV || "PENDING").toUpperCase();
+        const spvNote = grp.Catatan_SPV || "";
+        const hasSig = Boolean(grp.Paraf_TTD_Digital_SPV);
+
+        return `
+        <div class="border border-slate-200 rounded-xl p-3 space-y-2.5 bg-white min-w-0">
+            <div class="flex items-center justify-between text-xs gap-2">
                 <span class="font-bold text-slate-900">${grp.TrxDate || "-"} • ${grp.TrxTime || "-"}</span>
-                <span class="font-bold text-indigo-600">POS ${grp.RegNum || "-"}</span>
+                <span class="font-bold text-indigo-600 shrink-0">POS ${grp.RegNum || "-"}</span>
             </div>
             ${buildItemBoxHtml(grp)}
             ${buildPriceBlockHtml(grp)}
-            <div class="text-[11px] text-slate-600 pt-1 border-t border-slate-100">
-                <div>CashNum: <strong>${grp.CashNum || "-"}</strong> ${grp.CashName ? `(${grp.CashName})` : ""}</div>
-                <div>Remarks: <strong>${grp.Remarks_Kasir || "Belum diisi kasir"}</strong></div>
+            <div class="text-[11px] text-slate-600 pt-1.5 border-t border-slate-100 space-y-1 break-words">
+                <div>CashNum: <strong class="text-slate-900">${grp.CashNum || "-"}</strong> ${grp.CashName ? `<span class="font-semibold text-indigo-700">${grp.CashName}</span>` : ""}</div>
+                ${(authId || authName) ? `
+                <div>AuthID: <strong class="text-slate-900">${authId || "-"}</strong> ${authName ? `<span class="font-semibold text-indigo-700">${authName}</span>` : ""}</div>
+                ` : `<div class="text-slate-400">AuthID: -</div>`}
+                <div>Remarks: <strong class="text-slate-900">${grp.Remarks_Kasir || "Belum diisi kasir"}</strong></div>
+                <div>Status SPV: <strong class="text-slate-900">${spvStatus}</strong>${spvNote ? ` • <span>${spvNote}</span>` : ""} • <span class="text-slate-500">${hasSig ? "Paraf tersimpan" : "Belum ada paraf"}</span></div>
             </div>
-            <div class="flex justify-end pt-1">${buildActionButtonsHtml(grp)}</div>
+            <div class="flex flex-wrap justify-end gap-1.5 pt-1">${buildActionButtonsHtml(grp)}</div>
         </div>
-    `).join("");
+    `;
+    }).join("");
 }
 
 function renderMasterUserTable() {
