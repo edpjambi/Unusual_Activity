@@ -607,7 +607,7 @@ function normalizeServerRow(sheetName, raw, idx = 0) {
         pickField(raw, ["RegNum", "Reg Num", "POS", "Pos", "CounterID", "Counter ID", "Counter", "RegNo", "Reg No"])
     );
     const trxNum = normalizeIdToken(
-        pickField(raw, ["TRXNUM", "Trx Num", "Parked Invoice Number", "Parked Invoice", "No"])
+        pickField(raw, ["TrxNum", "TRXNUM", "Trx Num", "Parked Invoice Number", "Parked Invoice", "Invoice", "Receipt"])
     );
     const sku = normalizeIdToken(pickField(raw, ["SKU", "Sku"]));
     const description = String(
@@ -966,8 +966,7 @@ function updateKpiCards() {
 function renderTabs() {
     const container = document.getElementById("sheet-tabs");
     if (!container) return;
-    const role = String((currentUser && currentUser.Role) || "").toUpperCase();
-    const isAdmin = role.includes("ADMIN");
+    const isAnyAdmin = isAnyAdminViewUser(currentUser);
 
     let html = TRANSACTION_SHEETS.map(sheetName => {
         const count = getAccessibleRowsForSheet(sheetName).length;
@@ -982,7 +981,15 @@ function renderTabs() {
         `;
     }).join("");
 
-    if (isAdmin) {
+    const activeAnalitik = activeTab === "REKAP_AKTIVITAS";
+    html += `
+        <a href="rekap-aktivitas.html"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-2 transition ${activeAnalitik ? "bg-rose-600 text-white shadow-sm" : "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"}">
+            <span>Grafik &amp; Ranking SPV/Kasir</span>
+        </a>
+    `;
+
+    if (isAnyAdmin) {
         const active = activeTab === "MASTER_USER";
         html += `
             <a href="${SHEET_PAGE_MAP.MASTER_USER}"

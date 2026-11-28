@@ -1,4 +1,4 @@
-const CACHE_NAME = "audit-kasir-mds312-v12";
+const CACHE_NAME = "audit-kasir-mds312-v13";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const CORE_ASSETS = [
   "./print-duplicate.html",
   "./disc-manual.html",
   "./master-user.html",
+  "./rekap-aktivitas.html",
   "./audit-core.js",
   "./manifest.json",
   "./icon-192.png",

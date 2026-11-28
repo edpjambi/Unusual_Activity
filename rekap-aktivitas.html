@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#e11d48" />
+    <title>Audit Kasir MDS 312 • Grafik &amp; Ranking SPV / Kasir</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        try {
+            if (!localStorage.getItem("MDS_312_SESSION_V1")) {
+                window.location.href = "index.html";
+            }
+        } catch (_) {}
+    </script>
+    <style>
+        body {
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- HEADER -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-600 text-white font-extrabold flex items-center justify-center shadow-sm">
+                    312
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-base sm:text-lg font-extrabold text-slate-900">Audit Kasir MDS 312</h1>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+                            Analitik SPV &amp; Kasir
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500">Lippo Plaza Jambi • Store 312 • <span class="font-semibold text-indigo-600">Grafik &amp; Tabel Ranking Aktivitas</span></p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="index.html" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition">
+                    ← Kembali ke Dashboard Audit
+                </a>
+                <button onclick="syncFreshData()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- KONTEN UTAMA -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-5 space-y-5">
+
+        <!-- NAVIGASI CEPAT -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-2">
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-bold">
+                <a href="index.html" class="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 whitespace-nowrap">Unmatch Transaksi</a>
+                <a href="parked-invoice.html" class="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 whitespace-nowrap">Parked Invoice</a>
+                <a href="item-correct.html" class="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 whitespace-nowrap">Item Correct</a>
+                <a href="void-bill.html" class="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 whitespace-nowrap">Void-Bill Cancelation</a>
+                <a href="return.html" class="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 whitespace-nowrap">Return</a>
+                <a href="price-override.html" class="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 whitespace-nowrap">Price Overide</a>
+                <a href="print-duplicate.html" class="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 whitespace-nowrap">Print Duplicate</a>
+                <a href="disc-manual.html" class="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 whitespace-nowrap">Disc Manual</a>
+                <span class="px-3 py-2 rounded-xl bg-rose-600 text-white whitespace-nowrap shadow-sm">Grafik &amp; Ranking SPV/Kasir</span>
+            </div>
+        </section>
+
+        <!-- FILTER ANALITIK -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Sheet Transaksi</label>
+                <select id="ana-sheet" onchange="renderAnalytics()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold">
+                    <option value="ALL">Semua 8 Sheet Transaksi</option>
+                    <option value="Unmatch Transaksi">Unmatch Transaksi</option>
+                    <option value="Parked Invoice">Parked Invoice</option>
+                    <option value="Item Correct">Item Correct</option>
+                    <option value="Void-Bill Cancelation">Void-Bill Cancelation</option>
+                    <option value="Return">Return</option>
+                    <option value="Price Overide">Price Overide</option>
+                    <option value="Print Duplicate">Print Duplicate</option>
+                    <option value="Disc Manual">Disc Manual</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Dari Tanggal</label>
+                <input id="ana-date-start" type="date" onchange="renderAnalytics()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Sampai Tanggal</label>
+                <input id="ana-date-end" type="date" onchange="renderAnalytics()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            </div>
+            <div class="flex gap-2">
+                <button onclick="resetAnalyticsFilter()" class="w-full px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+                    Reset Filter
+                </button>
+            </div>
+        </section>
+
+        <!-- RINGKASAN ANGKA -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4">
+                <div class="text-xs font-semibold text-slate-500">Total Record Terfilter</div>
+                <div id="stat-total-trx" class="text-2xl font-extrabold text-slate-900 mt-1">0</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-indigo-200 p-4">
+                <div class="text-xs font-semibold text-indigo-700">Total Record Ber-Otorisasi SPV</div>
+                <div id="stat-total-auth" class="text-2xl font-extrabold text-indigo-600 mt-1">0</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-rose-200 p-4">
+                <div class="text-xs font-semibold text-rose-700">SPV Otorisasi Terbanyak</div>
+                <div id="stat-top-spv" class="text-sm font-extrabold text-rose-600 mt-1.5 truncate">-</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-amber-200 p-4">
+                <div class="text-xs font-semibold text-amber-700">Kasir Aktivitas Terbanyak</div>
+                <div id="stat-top-cashier" class="text-sm font-extrabold text-amber-600 mt-1.5 truncate">-</div>
+            </div>
+        </section>
+
+        <!-- GRAFIK SPV & KASIR -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                <div>
+                    <h2 class="text-sm font-extrabold text-slate-900">Grafik Top 10 SPV (Otorisasi Terbanyak)</h2>
+                    <p class="text-[11px] text-slate-500">Berdasarkan kemunculan AuthID / AuthName pada sheet terpilih</p>
+                </div>
+                <div class="h-64">
+                    <canvas id="chart-spv"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                <div>
+                    <h2 class="text-sm font-extrabold text-slate-900">Grafik Top 10 Kasir (Aktivitas Terbanyak)</h2>
+                    <p class="text-[11px] text-slate-500">Berdasarkan kemunculan CashNum / CashName pada sheet terpilih</p>
+                </div>
+                <div class="h-64">
+                    <canvas id="chart-cashier"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- TABEL DETAIL RANKING SPV & KASIR -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- TABEL SPV -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                <h3 class="text-sm font-extrabold text-slate-900">Tabel Ranking Otorisasi SPV (AuthID)</h3>
+                <div class="overflow-x-auto max-h-96">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="sticky top-0 bg-slate-50 border-b border-slate-200 text-slate-500 uppercase">
+                            <tr>
+                                <th class="py-2 px-2.5">#</th>
+                                <th class="py-2 px-2.5">AuthID</th>
+                                <th class="py-2 px-2.5">Nama SPV</th>
+                                <th class="py-2 px-2.5 text-right">Jumlah</th>
+                                <th class="py-2 px-2.5 text-right">Total Net</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-spv" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABEL KASIR -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                <h3 class="text-sm font-extrabold text-slate-900">Tabel Ranking Aktivitas Kasir (CashNum)</h3>
+                <div class="overflow-x-auto max-h-96">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="sticky top-0 bg-slate-50 border-b border-slate-200 text-slate-500 uppercase">
+                            <tr>
+                                <th class="py-2 px-2.5">#</th>
+                                <th class="py-2 px-2.5">CashNum</th>
+                                <th class="py-2 px-2.5">Nama Kasir</th>
+                                <th class="py-2 px-2.5 text-right">Jumlah</th>
+                                <th class="py-2 px-2.5 text-right">Total Net</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-cashier" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- REKAP PER SHEET PER SPV & KASIR -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+            <div>
+                <h3 class="text-sm font-extrabold text-slate-900">Matriks Aktivitas per Sheet (Ringkasan 8 Sheet)</h3>
+                <p class="text-[11px] text-slate-500">Perbandingan jumlah transaksi, SPV teraktif, dan Kasir teraktif pada tiap-tiap sheet</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase">
+                        <tr>
+                            <th class="py-2.5 px-3">Nama Sheet</th>
+                            <th class="py-2.5 px-3 text-right">Total Record</th>
+                            <th class="py-2.5 px-3">SPV Otorisasi Terbanyak</th>
+                            <th class="py-2.5 px-3">Kasir Aktivitas Terbanyak</th>
+                            <th class="py-2.5 px-3 text-right">Total Net</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-matrix" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const STORAGE_KEY = "MDS_312_AUDIT_DB_V2";
+        const GAS_URL_KEY = "MDS_312_GAS_URL_V1";
+        const SHEETS = [
+            "Unmatch Transaksi",
+            "Parked Invoice",
+            "Item Correct",
+            "Void-Bill Cancelation",
+            "Return",
+            "Price Overide",
+            "Print Duplicate",
+            "Disc Manual"
+        ];
+
+        let localDb = { sheets: {}, users: [] };
+        let spvChartInstance = null;
+        let cashierChartInstance = null;
+
+        function normId(val) {
+            if (val === undefined || val === null) return "";
+            let s = String(val).trim();
+            if (/^\d+\.0+$/.test(s)) s = s.replace(/\.0+$/, "");
+            return s;
+        }
+
+        function toNumber(v) {
+            if (typeof v === "number") return isFinite(v) ? v : 0;
+            if (!v) return 0;
+            const n = Number(String(v).replace(/[^0-9.-]/g, ""));
+            return isFinite(n) ? n : 0;
+        }
+
+        function fmtRp(n) {
+            return "Rp " + Math.round(toNumber(n)).toLocaleString("id-ID");
+        }
+
+        function loadDb() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.sheets) localDb = parsed;
+                }
+            } catch (_) {}
+        }
+
+        async function syncFreshData() {
+            const gasUrl = localStorage.getItem(GAS_URL_KEY);
+            if (!gasUrl) {
+                loadDb();
+                renderAnalytics();
+                return;
+            }
+            try {
+                const res = await fetch(gasUrl + (gasUrl.includes("?") ? "&" : "?") + "action=getAllData");
+                const json = await res.json();
+                if (json && json.sheets) {
+                    localDb.sheets = json.sheets;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(localDb));
+                }
+            } catch (_) {
+                loadDb();
+            }
+            renderAnalytics();
+        }
+
+        function getRowsByFilter(sheetTarget, dStart, dEnd) {
+            const listSheets = sheetTarget === "ALL" ? SHEETS : [sheetTarget];
+            const out = [];
+            listSheets.forEach(s => {
+                (localDb.sheets[s] || []).forEach(r => {
+                    const dt = String(r.TrxDate || r["TrxDate"] || "").slice(0, 10);
+                    if (dStart && dt && dt < dStart) return;
+                    if (dEnd && dt && dt > dEnd) return;
+                    out.push({ ...r, _sheet: s });
+                });
+            });
+            return out;
+        }
+
+        function aggregatePeople(rows, idKeys, nameKeys, fallbackUnknown = false) {
+            const map = new Map();
+            rows.forEach(r => {
+                let id = "";
+                for (const k of idKeys) {
+                    if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== "") {
+                        id = normId(r[k]);
+                        break;
+                    }
+                }
+                if (!id && !fallbackUnknown) return;
+                if (!id) id = "TANPA_ID";
+
+                let name = "";
+                for (const nk of nameKeys) {
+                    if (r[nk] !== undefined && r[nk] !== null && String(r[nk]).trim() !== "") {
+                        name = String(r[nk]).trim();
+                        break;
+                    }
+                }
+
+                const net = toNumber(r.NetAmount !== undefined ? r.NetAmount : (r.Payment !== undefined ? r.Payment : r.Amount));
+                if (!map.has(id)) {
+                    map.set(id, { id, name: name || "-", count: 0, net: 0 });
+                }
+                const entry = map.get(id);
+                entry.count += 1;
+                entry.net += net;
+                if (entry.name === "-" && name) entry.name = name;
+            });
+            return Array.from(map.values()).sort((a, b) => b.count - a.count || b.net - a.net);
+        }
+
+        function resetAnalyticsFilter() {
+            document.getElementById("ana-sheet").value = "ALL";
+            document.getElementById("ana-date-start").value = "";
+            document.getElementById("ana-date-end").value = "";
+            renderAnalytics();
+        }
+
+        function renderAnalytics() {
+            const sheetTarget = document.getElementById("ana-sheet").value;
+            const dStart = document.getElementById("ana-date-start").value;
+            const dEnd = document.getElementById("ana-date-end").value;
+
+            const rows = getRowsByFilter(sheetTarget, dStart, dEnd);
+            const spvRank = aggregatePeople(rows, ["AuthID", "AuthId", "Auth ID"], ["AuthName", "Auth Name"], false);
+            const cashierRank = aggregatePeople(rows, ["CashNum", "Cash Num", "CashierID"], ["CashName", "CashierName"], true);
+
+            const totalAuthCount = spvRank.reduce((acc, x) => acc + x.count, 0);
+            document.getElementById("stat-total-trx").textContent = rows.length.toLocaleString("id-ID");
+            document.getElementById("stat-total-auth").textContent = totalAuthCount.toLocaleString("id-ID");
+            document.getElementById("stat-top-spv").textContent = spvRank.length
+                ? `${spvRank[0].name !== "-" ? spvRank[0].name : spvRank[0].id} (${spvRank[0].count}x)`
+                : "-";
+            document.getElementById("stat-top-cashier").textContent = cashierRank.length
+                ? `${cashierRank[0].name !== "-" ? cashierRank[0].name : cashierRank[0].id} (${cashierRank[0].count}x)`
+                : "-";
+
+            const tbodySpv = document.getElementById("tbody-spv");
+            tbodySpv.innerHTML = spvRank.length
+                ? spvRank.map((item, i) => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="py-2 px-2.5 font-bold text-slate-500">${i + 1}</td>
+                        <td class="py-2 px-2.5 font-bold text-indigo-700">${item.id}</td>
+                        <td class="py-2 px-2.5 font-semibold text-slate-800">${item.name}</td>
+                        <td class="py-2 px-2.5 text-right font-extrabold text-slate-900">${item.count}</td>
+                        <td class="py-2 px-2.5 text-right text-slate-600">${fmtRp(item.net)}</td>
+                    </tr>
+                `).join("")
+                : `<tr><td colspan="5" class="py-6 text-center text-slate-400">Tidak ada data otorisasi SPV.</td></tr>`;
+
+            const tbodyCashier = document.getElementById("tbody-cashier");
+            tbodyCashier.innerHTML = cashierRank.length
+                ? cashierRank.map((item, i) => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="py-2 px-2.5 font-bold text-slate-500">${i + 1}</td>
+                        <td class="py-2 px-2.5 font-bold text-rose-700">${item.id}</td>
+                        <td class="py-2 px-2.5 font-semibold text-slate-800">${item.name}</td>
+                        <td class="py-2 px-2.5 text-right font-extrabold text-slate-900">${item.count}</td>
+                        <td class="py-2 px-2.5 text-right text-slate-600">${fmtRp(item.net)}</td>
+                    </tr>
+                `).join("")
+                : `<tr><td colspan="5" class="py-6 text-center text-slate-400">Tidak ada data aktivitas kasir.</td></tr>`;
+
+            const top10Spv = spvRank.slice(0, 10);
+            if (spvChartInstance) spvChartInstance.destroy();
+            spvChartInstance = new Chart(document.getElementById("chart-spv"), {
+                type: "bar",
+                data: {
+                    labels: top10Spv.map(x => `${x.name !== "-" ? x.name : x.id} (${x.id})`),
+                    datasets: [{
+                        label: "Jumlah Otorisasi",
+                        data: top10Spv.map(x => x.count),
+                        backgroundColor: "#4f46e5",
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: "y",
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+
+            const top10Cashier = cashierRank.slice(0, 10);
+            if (cashierChartInstance) cashierChartInstance.destroy();
+            cashierChartInstance = new Chart(document.getElementById("chart-cashier"), {
+                type: "bar",
+                data: {
+                    labels: top10Cashier.map(x => `${x.name !== "-" ? x.name : x.id} (${x.id})`),
+                    datasets: [{
+                        label: "Jumlah Aktivitas",
+                        data: top10Cashier.map(x => x.count),
+                        backgroundColor: "#e11d48",
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: "y",
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+
+            const tbodyMatrix = document.getElementById("tbody-matrix");
+            tbodyMatrix.innerHTML = SHEETS.map(s => {
+                const sRows = getRowsByFilter(s, dStart, dEnd);
+                const sSpv = aggregatePeople(sRows, ["AuthID", "AuthId", "Auth ID"], ["AuthName", "Auth Name"], false);
+                const sCash = aggregatePeople(sRows, ["CashNum", "Cash Num", "CashierID"], ["CashName", "CashierName"], true);
+                const totalNet = sRows.reduce((acc, r) => acc + toNumber(r.NetAmount !== undefined ? r.NetAmount : (r.Payment !== undefined ? r.Payment : r.Amount)), 0);
+
+                const topSpvTxt = sSpv.length
+                    ? `<span class="font-bold text-indigo-700">${sSpv[0].name !== "-" ? sSpv[0].name : sSpv[0].id}</span> (${sSpv[0].count}x)`
+                    : `<span class="text-slate-400">-</span>`;
+                const topCashTxt = sCash.length
+                    ? `<span class="font-bold text-rose-700">${sCash[0].name !== "-" ? sCash[0].name : sCash[0].id}</span> (${sCash[0].count}x)`
+                    : `<span class="text-slate-400">-</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50">
+                        <td class="py-2.5 px-3 font-bold text-slate-900">${s}</td>
+                        <td class="py-2.5 px-3 text-right font-extrabold text-slate-800">${sRows.length}</td>
+                        <td class="py-2.5 px-3">${topSpvTxt}</td>
+                        <td class="py-2.5 px-3">${topCashTxt}</td>
+                        <td class="py-2.5 px-3 text-right font-semibold text-slate-700">${fmtRp(totalNet)}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            loadDb();
+            renderAnalytics();
+            syncFreshData();
+        });
+    </script>
+</body>
+</html>
