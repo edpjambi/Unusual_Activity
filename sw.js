@@ -1,4 +1,4 @@
-const CACHE_NAME = "audit-kasir-mds312-v13";
+const CACHE_NAME = "audit-kasir-mds312-v15";
 const CORE_ASSETS = [
   "./",
   "./index.html",

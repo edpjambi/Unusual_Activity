@@ -129,6 +129,17 @@ const GROUP_BY_TRXTIME_SHEETS = [
     "Void-Bill Cancelation"
 ];
 
+function isValidTrxNum(val) {
+    const s = normalizeIdToken(val);
+    return Boolean(s && s !== "-" && s !== "0");
+}
+
+function formatGroupTrxHeader(trxNum, trxTime) {
+    const cleanTrx = isValidTrxNum(trxNum) ? normalizeIdToken(trxNum) : "Tanpa No Trx";
+    const cleanTime = String(trxTime || "").trim() || "-";
+    return `${cleanTrx} • ${cleanTime}`;
+}
+
 function groupRowsForDisplay(sheetName, rows) {
     const byTrxNum = GROUP_BY_TRXNUM_SHEETS.includes(sheetName);
     const byTrxTime = GROUP_BY_TRXTIME_SHEETS.includes(sheetName);
@@ -139,16 +150,18 @@ function groupRowsForDisplay(sheetName, rows) {
             const amount = toNum(r.Amount) || price;
             const disc = getRowDiscValue(r);
             const net = toNum(r.NetAmount !== undefined ? r.NetAmount : Math.max(0, amount - disc));
+            const cleanTrx = isValidTrxNum(r.TRXNUM) ? normalizeIdToken(r.TRXNUM) : "-";
             return {
                 groupKey: String(r._rowIndex || Math.random()),
-                groupLabel: r.TRXNUM || "-",
+                groupLabel: cleanTrx,
                 primaryRow: r,
                 items: [r],
                 rowIndexes: [Number(r._rowIndex || 0)],
                 TrxDate: r.TrxDate || "",
                 TrxTime: r.TrxTime || "",
                 RegNum: r.RegNum || "",
-                TRXNUM: r.TRXNUM || "-",
+                TRXNUM: cleanTrx,
+                rawTrxNum: isValidTrxNum(r.TRXNUM) ? normalizeIdToken(r.TRXNUM) : "",
                 CashNum: r.CashNum || "",
                 CashName: r.CashName || "",
                 AuthID: r.AuthID || "",
@@ -172,18 +185,18 @@ function groupRowsForDisplay(sheetName, rows) {
     rows.forEach((r, idx) => {
         let key = "";
         let label = "";
+        const validTrx = isValidTrxNum(r.TRXNUM) ? normalizeIdToken(r.TRXNUM) : "";
         if (byTrxNum) {
-            const trx = normalizeIdToken(r.TRXNUM);
             const dt = String(r.TrxDate || "").trim();
-            key = trx ? `TRX|${dt}|${trx}` : `ROW|${r._rowIndex || idx}`;
-            label = trx || "-";
+            key = validTrx ? `TRX|${dt}|${validTrx}` : `ROW|${r._rowIndex || idx}`;
+            label = validTrx || "-";
         } else if (byTrxTime) {
             const tm = String(r.TrxTime || "").trim();
             const dt = String(r.TrxDate || "").trim();
             const reg = normalizeIdToken(r.RegNum);
             const cash = normalizeIdToken(r.CashNum);
             key = tm ? `TIME|${dt}|${tm}|${reg}|${cash}` : `ROW|${r._rowIndex || idx}`;
-            label = r.TRXNUM && r.TRXNUM !== "-" ? `${r.TRXNUM} • ${tm || "-"}` : `Jam ${tm || "-"}`;
+            label = formatGroupTrxHeader(validTrx, tm);
         }
 
         const price = toNum(r.Price);
@@ -202,6 +215,7 @@ function groupRowsForDisplay(sheetName, rows) {
                 TrxTime: r.TrxTime || "",
                 RegNum: r.RegNum || "",
                 TRXNUM: label,
+                rawTrxNum: validTrx,
                 CashNum: r.CashNum || "",
                 CashName: r.CashName || "",
                 AuthID: r.AuthID || "",
@@ -226,6 +240,13 @@ function groupRowsForDisplay(sheetName, rows) {
             grp.totalAmount += amount;
             grp.totalDisc += disc;
             grp.totalNet += net;
+            if (!grp.rawTrxNum && validTrx) {
+                grp.rawTrxNum = validTrx;
+                if (byTrxTime) {
+                    grp.TRXNUM = formatGroupTrxHeader(validTrx, grp.TrxTime || r.TrxTime);
+                    grp.groupLabel = grp.TRXNUM;
+                }
+            }
             if (!grp.CashNum && r.CashNum) grp.CashNum = r.CashNum;
             if (!grp.CashName && r.CashName) grp.CashName = r.CashName;
             if (!grp.AuthID && r.AuthID) grp.AuthID = r.AuthID;
@@ -243,7 +264,11 @@ function groupRowsForDisplay(sheetName, rows) {
         }
     });
 
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a, b) => {
+        const da = `${a.TrxDate || ""} ${a.TrxTime || ""}`;
+        const db = `${b.TrxDate || ""} ${b.TrxTime || ""}`;
+        return da.localeCompare(db);
+    });
 }
 const REMARKS_TEMPLATES = {
     "Unmatch Transaksi": [
@@ -515,11 +540,20 @@ function normalizeDateIso(val) {
     }
 
     if (val instanceof Date && !isNaN(val.getTime())) {
-        return formatDateParts(val.getFullYear(), val.getMonth() + 1, val.getDate());
+        const shifted = new Date(val.getTime() + 12 * 3600 * 1000);
+        return formatDateParts(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, shifted.getUTCDate());
     }
 
     const s = String(val).trim();
     if (!s) return "";
+
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+        const parsedIso = new Date(s);
+        if (!isNaN(parsedIso.getTime())) {
+            const shifted = new Date(parsedIso.getTime() + 12 * 3600 * 1000);
+            return formatDateParts(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, shifted.getUTCDate());
+        }
+    }
 
     const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
     if (isoMatch) {
@@ -544,30 +578,35 @@ function normalizeDateIso(val) {
         return formatDateParts(yearPart, month, day);
     }
 
-    const parsed = new Date(s);
-    if (!isNaN(parsed.getTime())) {
-        return formatDateParts(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
-    }
-
     return "";
 }
 
 function normalizeTimeVal(val) {
     if (val === null || val === undefined || val === "") return "";
-    if (typeof val === "number" && isFinite(val) && val >= 0 && val < 1) {
-        const totalSeconds = Math.round(val * 86400);
+    if (typeof val === "number" && isFinite(val) && val >= 0) {
+        const frac = val % 1;
+        const totalSeconds = Math.round(frac * 86400);
         const hh = String(Math.floor(totalSeconds / 3600) % 24).padStart(2, "0");
         const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
         const ss = String(totalSeconds % 60).padStart(2, "0");
         return `${hh}:${mm}:${ss}`;
     }
     if (val instanceof Date && !isNaN(val.getTime())) {
-        const hh = String(val.getHours()).padStart(2, "0");
-        const mm = String(val.getMinutes()).padStart(2, "0");
-        const ss = String(val.getSeconds()).padStart(2, "0");
+        const hh = String(val.getUTCHours()).padStart(2, "0");
+        const mm = String(val.getUTCMinutes()).padStart(2, "0");
+        const ss = String(val.getUTCSeconds()).padStart(2, "0");
         return `${hh}:${mm}:${ss}`;
     }
     const s = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+            const hh = String(d.getUTCHours()).padStart(2, "0");
+            const mm = String(d.getUTCMinutes()).padStart(2, "0");
+            const ss = String(d.getUTCSeconds()).padStart(2, "0");
+            return `${hh}:${mm}:${ss}`;
+        }
+    }
     const match = s.match(/(\d{1,2}:\d{2}(?::\d{2})?)/);
     return match ? match[1] : s;
 }
@@ -1390,7 +1429,7 @@ async function submitExcelUpload() {
 
     try {
         const buf = await file.arrayBuffer();
-        const wb = XLSX.read(buf, { type: "array", cellDates: true });
+        const wb = XLSX.read(buf, { type: "array", cellDates: false });
         const sheetsPayload = {};
         let localAdded = 0;
 
