@@ -592,18 +592,26 @@ function normalizeTimeVal(val) {
         return `${hh}:${mm}:${ss}`;
     }
     if (val instanceof Date && !isNaN(val.getTime())) {
-        const hh = String(val.getUTCHours()).padStart(2, "0");
-        const mm = String(val.getUTCMinutes()).padStart(2, "0");
-        const ss = String(val.getUTCSeconds()).padStart(2, "0");
+        const hh = String(val.getHours()).padStart(2, "0");
+        const mm = String(val.getMinutes()).padStart(2, "0");
+        const ss = String(val.getSeconds()).padStart(2, "0");
         return `${hh}:${mm}:${ss}`;
     }
     const s = String(val).trim();
+    const plainTime = s.match(/^(\d{1,2}:\d{2}(?::\d{2})?)$/);
+    if (plainTime) {
+        const parts = plainTime[1].split(":");
+        const hh = String(parts[0]).padStart(2, "0");
+        const mm = String(parts[1]).padStart(2, "0");
+        const ss = String(parts[2] || "00").padStart(2, "0");
+        return `${hh}:${mm}:${ss}`;
+    }
     if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
         const d = new Date(s);
         if (!isNaN(d.getTime())) {
-            const hh = String(d.getUTCHours()).padStart(2, "0");
-            const mm = String(d.getUTCMinutes()).padStart(2, "0");
-            const ss = String(d.getUTCSeconds()).padStart(2, "0");
+            const hh = String(d.getHours()).padStart(2, "0");
+            const mm = String(d.getMinutes()).padStart(2, "0");
+            const ss = String(d.getSeconds()).padStart(2, "0");
             return `${hh}:${mm}:${ss}`;
         }
     }
